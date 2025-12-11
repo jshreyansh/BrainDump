@@ -171,6 +171,8 @@ struct EntryCard: View {
     @State private var textContent: String = ""
     @State private var isLoaded = false
     @State private var displayTags: [DisplayTag] = []
+    @State private var isExpanded = false
+    @State private var needsExpansion = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -192,33 +194,45 @@ struct EntryCard: View {
                 Spacer()
                 
                 // Action buttons
-                Menu {
-                    Button("Open in Default App") {
-                        StorageManager.shared.openInSystemApp(item)
-                    }
-                    Button("Reveal in Finder") {
-                        StorageManager.shared.revealInFinder(item)
-                    }
-                    Divider()
+                HStack(spacing: 8) {
+                    // Copy button (only for text items)
                     if item.type == .text {
-                        Button("Copy Text") {
+                        Button(action: {
                             if let text = item.loadTextContent() {
                                 NSPasteboard.general.clearContents()
                                 NSPasteboard.general.setString(text, forType: .string)
                             }
+                        }) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 16))
+                                .foregroundColor(.secondary)
                         }
+                        .buttonStyle(.plain)
+                        .frame(width: 24)
                     }
-                    Button("Copy File Path") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(item.filePath.path, forType: .string)
+                    
+                    // Menu button (hamburger icon - using Menu with hidden indicator)
+                    Menu {
+                        Button("Open in Default App") {
+                            StorageManager.shared.openInSystemApp(item)
+                        }
+                        Button("Reveal in Finder") {
+                            StorageManager.shared.revealInFinder(item)
+                        }
+                        Divider()
+                        Button("Copy File Path") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(item.filePath.path, forType: .string)
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 16))
+                            .foregroundColor(.secondary)
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 16))
-                        .foregroundColor(.secondary)
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .frame(width: 24)
                 }
-                .menuStyle(.borderlessButton)
-                .frame(width: 24)
             }
             
             // Metadata Tags
@@ -244,11 +258,49 @@ struct EntryCard: View {
         switch item.type {
         case .text:
             if isLoaded {
-                Text(textContent)
-                    .font(.body)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .lineSpacing(4)
+                VStack(alignment: .leading, spacing: 8) {
+                    // Text content with expandable functionality
+                    if isExpanded {
+                        // Full text when expanded
+                        Text(textContent)
+                            .font(.body)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .lineSpacing(4)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        // Truncated text when collapsed (4 lines)
+                        // Use explicit frame constraints and clipping to force truncation
+                        Text(textContent)
+                            .font(.body)
+                            .textSelection(.enabled)
+                            .lineSpacing(4)
+                            .lineLimit(4)
+                            .truncationMode(.tail)
+                            .frame(maxWidth: .infinity, maxHeight: 100, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: false)
+                            .clipped()
+                    }
+                    
+                    // Show more/less button - show if text needs expansion
+                    if needsExpansion {
+                        Button(action: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                isExpanded.toggle()
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Text(isExpanded ? "Show less" : "Show more")
+                                    .font(.system(size: 13, weight: .medium))
+                                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 10, weight: .semibold))
+                            }
+                            .foregroundColor(.blue)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             } else {
                 ProgressView()
                     .frame(height: 40)
@@ -279,7 +331,37 @@ struct EntryCard: View {
                 self.textContent = content
                 self.displayTags = tags
                 self.isLoaded = true
+                // Check if expansion is needed after content loads
+                self.checkIfExpansionNeeded()
             }
+        }
+    }
+    
+    private func checkIfExpansionNeeded() {
+        // Aggressive check: Always show expand for text that's likely to exceed 4-5 lines
+        // Check multiple criteria to catch different cases
+        
+        guard !textContent.isEmpty else {
+            needsExpansion = false
+            return
+        }
+        
+        // 1. Character count - if text is longer than ~250 chars, it's likely more than 4-5 lines
+        let charCount = textContent.count
+        
+        // 2. Newline count - if there are more than 3 explicit newlines
+        let newlineCount = textContent.components(separatedBy: .newlines).count
+        
+        // 3. Word count - if there are more than ~40 words, likely exceeds 4-5 lines
+        let wordCount = textContent.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
+        
+        // Show expansion if ANY of these conditions are met
+        // Lowered thresholds to be more aggressive and catch more cases
+        needsExpansion = charCount > 250 || newlineCount > 3 || wordCount > 40
+        
+        // Debug: Force expansion for very long text as safety net
+        if charCount > 1000 || wordCount > 100 {
+            needsExpansion = true
         }
     }
 }
