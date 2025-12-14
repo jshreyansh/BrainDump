@@ -33,60 +33,64 @@ struct FloatingBubbleView: View {
     
     var body: some View {
         ZStack {
-            // Action buttons (shown when expanded)
-            if isExpanded {
-                // Text button - positioned to the left
-                ActionButton(
-                    icon: "text.cursor",
-                    label: "Text",
-                    color: .blue
-                ) {
-                    // Capture the previous active app BEFORE BrainDump becomes active
-                    // This ensures we get the correct source app for metadata
-                    FloatingBubbleController.shared.capturePreviousActiveApp()
-                    
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        showTextInput = true
-                        isExpanded = false
-                    }
-                }
-                .offset(x: -expandedRadius, y: -30)
-                .transition(.scale.combined(with: .opacity))
+            // Action buttons - always in hierarchy, visibility controlled for smooth in-place animation
+            // Text button - positioned to the left
+            ActionButton(
+                icon: "text.cursor",
+                label: "Text",
+                color: .blue
+            ) {
+                // Capture the previous active app BEFORE BrainDump becomes active
+                // This ensures we get the correct source app for metadata
+                FloatingBubbleController.shared.capturePreviousActiveApp()
                 
-                // Image/Screenshot button (interactive selection) - positioned to the right
-                ActionButton(
-                    icon: "camera.viewfinder",
-                    label: "Select",
-                    color: .purple
-                ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        isExpanded = false
-                    }
-                    // Slight delay to allow animation, then capture
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        startScreenshotCapture()
-                    }
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    showTextInput = true
+                    isExpanded = false
                 }
-                .offset(x: expandedRadius, y: -30)
-                .transition(.scale.combined(with: .opacity))
-                
-                // Full screenshot button - positioned below
-                ActionButton(
-                    icon: "camera.fill",
-                    label: "Full",
-                    color: .orange
-                ) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        isExpanded = false
-                    }
-                    // Slight delay to allow animation, then capture
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        startFullScreenshotCapture()
-                    }
-                }
-                .offset(x: 0, y: expandedRadius + 10)
-                .transition(.scale.combined(with: .opacity))
             }
+            .offset(x: -expandedRadius, y: -30)
+            .opacity(isExpanded ? 1 : 0)
+            .scaleEffect(isExpanded ? 1.0 : 0.8)
+            .allowsHitTesting(isExpanded)
+            
+            // Image/Screenshot button (interactive selection) - positioned to the right
+            ActionButton(
+                icon: "camera.viewfinder",
+                label: "Select",
+                color: .purple
+            ) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isExpanded = false
+                }
+                // Slight delay to allow animation, then capture
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    startScreenshotCapture()
+                }
+            }
+            .offset(x: expandedRadius, y: -30)
+            .opacity(isExpanded ? 1 : 0)
+            .scaleEffect(isExpanded ? 1.0 : 0.8)
+            .allowsHitTesting(isExpanded)
+            
+            // Full screenshot button - positioned below
+            ActionButton(
+                icon: "camera.fill",
+                label: "Full",
+                color: .orange
+            ) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isExpanded = false
+                }
+                // Slight delay to allow animation, then capture
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    startFullScreenshotCapture()
+                }
+            }
+            .offset(x: 0, y: expandedRadius + 10)
+            .opacity(isExpanded ? 1 : 0)
+            .scaleEffect(isExpanded ? 1.0 : 0.8)
+            .allowsHitTesting(isExpanded)
             
             // Text input popup (shown when text mode is active)
             if showTextInput {
@@ -96,102 +100,106 @@ struct FloatingBubbleView: View {
                         saveTextInput(text)
                     },
                     onCancel: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(.easeInOut(duration: 0.25)) {
                             showTextInput = false
                             textInputValue = ""
                         }
                     }
                 )
                 .offset(y: -100)
-                .transition(.asymmetric(
-                    insertion: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity),
-                    removal: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity)
-                ))
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
             }
             
             // Main bubble - pill shape when collapsed, circle when expanded
+            // Both shapes exist in hierarchy, opacity controls visibility for smooth in-place transformation
             ZStack {
-                if isExpanded {
-                    // Expanded state: Circle (keeping original design)
-                    Circle()
+                // Pill shape (default state) - always in hierarchy
+                RoundedRectangle(cornerRadius: pillCornerRadius)
+                    .fill(.ultraThinMaterial)
+                    .frame(width: pillWidth, height: pillHeight)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: pillCornerRadius)
+                            .strokeBorder(
+                                Color.primary.opacity(isHovering ? 0.3 : 0.15),
+                                lineWidth: isHovering ? 1.5 : 1.0
+                            )
+                    )
+                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
+                    .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                    .opacity(isExpanded ? 0 : 1)
+                    .scaleEffect(isExpanded ? 0.8 : 1.0)
+                
+                // Subtle inner glow on hover/drag (pill state)
+                if (isHovering || isDragOver) && !isExpanded {
+                    RoundedRectangle(cornerRadius: pillCornerRadius)
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    Color.white.opacity(0.95),
-                                    Color.white.opacity(0.85)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: bubbleSize, height: bubbleSize)
-                        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-                        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-                    
-                    // Inner glow when expanded
-                    Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    Color.accentColor.opacity(isDragOver ? 0.3 : 0.25),
+                                    Color.accentColor.opacity(isDragOver ? 0.15 : 0.08),
                                     Color.clear
                                 ],
-                                center: .center,
-                                startRadius: 0,
-                                endRadius: bubbleSize / 2
+                                startPoint: .center,
+                                endPoint: .bottom
                             )
                         )
-                        .frame(width: bubbleSize, height: bubbleSize)
-                    
-                    // Expanded state ring
-                    Circle()
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [Color.purple.opacity(0.5), Color.blue.opacity(0.5)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 2
-                        )
-                        .frame(width: bubbleSize + 6, height: bubbleSize + 6)
-                } else {
-                    // Default state: Pill shape with Apple's glass material
-                    RoundedRectangle(cornerRadius: pillCornerRadius)
-                        .fill(.ultraThinMaterial)
                         .frame(width: pillWidth, height: pillHeight)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: pillCornerRadius)
-                                .strokeBorder(
-                                    Color.primary.opacity(isHovering ? 0.3 : 0.15),
-                                    lineWidth: isHovering ? 1.5 : 1.0
-                                )
-                        )
-                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
-                        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-                    
-                    // Subtle inner glow on hover/drag
-                    if isHovering || isDragOver {
-                        RoundedRectangle(cornerRadius: pillCornerRadius)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.accentColor.opacity(isDragOver ? 0.15 : 0.08),
-                                        Color.clear
-                                    ],
-                                    startPoint: .center,
-                                    endPoint: .bottom
-                                )
-                            )
-                            .frame(width: pillWidth, height: pillHeight)
-                    }
                 }
                 
-                // Brain icon (changes when expanded)
-                Image(systemName: isExpanded ? "xmark" : "brain.head.profile")
-                    .font(.system(size: isExpanded ? 18 : 16, weight: .medium))
+                // Circle shape (expanded state) - always in hierarchy
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.95),
+                                Color.white.opacity(0.85)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: bubbleSize, height: bubbleSize)
+                    .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+                    .opacity(isExpanded ? 1 : 0)
+                    .scaleEffect(isExpanded ? 1.0 : 0.8)
+                
+                // Inner glow when expanded
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.accentColor.opacity(isDragOver ? 0.3 : 0.25),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: bubbleSize / 2
+                        )
+                    )
+                    .frame(width: bubbleSize, height: bubbleSize)
+                    .opacity(isExpanded ? 1 : 0)
+                
+                // Expanded state ring
+                Circle()
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [Color.purple.opacity(0.5), Color.blue.opacity(0.5)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2
+                    )
+                    .frame(width: bubbleSize + 6, height: bubbleSize + 6)
+                    .opacity(isExpanded ? 1 : 0)
+                    .scaleEffect(isExpanded ? 1.0 : 0.8)
+            }
+                
+                // Brain icon (changes when expanded or text input is open)
+                Image(systemName: (isExpanded || showTextInput) ? "xmark" : "brain.head.profile")
+                    .font(.system(size: (isExpanded || showTextInput) ? 18 : 16, weight: .medium))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: isExpanded ? [Color.gray, Color.gray.opacity(0.7)] : [Color.purple, Color.blue],
+                            colors: (isExpanded || showTextInput) ? [Color.gray, Color.gray.opacity(0.7)] : [Color.purple, Color.blue],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -228,10 +236,10 @@ struct FloatingBubbleView: View {
                 }
             }
             .scaleEffect(isPulsing ? 1.05 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPulsing)
+            .animation(.easeInOut(duration: 0.2), value: isPulsing)
             .animation(.easeInOut(duration: 0.2), value: isDragOver)
             .animation(.easeInOut(duration: 0.15), value: isHovering)
-            .animation(.spring(response: 0.35, dampingFraction: 0.75), value: isExpanded)
+            .animation(.easeInOut(duration: 0.25), value: isExpanded)
             .onHover { hovering in
                 isHovering = hovering
             }
@@ -242,18 +250,55 @@ struct FloatingBubbleView: View {
                 handleDrop(providers: providers)
                 return true
             }
+            .onChange(of: isExpanded) { newValue in
+                // Notify controller to resize panel
+                FloatingBubbleController.shared.updatePanelSize(isExpanded: newValue, showTextInput: showTextInput)
+            }
+            .onChange(of: showTextInput) { newValue in
+                // Notify controller to resize panel
+                FloatingBubbleController.shared.updatePanelSize(isExpanded: isExpanded, showTextInput: newValue)
+            }
+            .onAppear {
+                // Set initial size when view appears
+                FloatingBubbleController.shared.updatePanelSize(isExpanded: isExpanded, showTextInput: showTextInput)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("CloseTextInput"))) { _ in
+            // Close text input when app loses focus
+            if showTextInput {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    showTextInput = false
+                    textInputValue = ""
+                    isExpanded = false
+                }
+                // Ensure text input mode is disabled
+                FloatingBubbleController.shared.disableTextInputMode()
+            }
         }
-        .onChange(of: isExpanded) { newValue in
-            // Notify controller to resize panel
-            FloatingBubbleController.shared.updatePanelSize(isExpanded: newValue, showTextInput: showTextInput)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TriggerTextInput"))) { _ in
+            // Trigger text input via hotkey
+            FloatingBubbleController.shared.capturePreviousActiveApp()
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showTextInput = true
+                isExpanded = false
+            }
         }
-        .onChange(of: showTextInput) { newValue in
-            // Notify controller to resize panel
-            FloatingBubbleController.shared.updatePanelSize(isExpanded: isExpanded, showTextInput: newValue)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TriggerPartialScreenshot"))) { _ in
+            // Trigger partial screenshot via hotkey
+            withAnimation(.easeInOut(duration: 0.25)) {
+                isExpanded = false
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                startScreenshotCapture()
+            }
         }
-        .onAppear {
-            // Set initial size when view appears
-            FloatingBubbleController.shared.updatePanelSize(isExpanded: isExpanded, showTextInput: showTextInput)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TriggerFullScreenshot"))) { _ in
+            // Trigger full screenshot via hotkey
+            withAnimation(.easeInOut(duration: 0.25)) {
+                isExpanded = false
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                startFullScreenshotCapture()
+            }
         }
     }
     
@@ -269,13 +314,20 @@ struct FloatingBubbleView: View {
     // MARK: - Click Handler
     
     private func handleClick() {
-        // If text input is showing, don't toggle expand
+        // If text input is showing, close it when clicking the bubble
         if showTextInput {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                showTextInput = false
+                textInputValue = ""
+                isExpanded = false
+            }
+            // Ensure text input mode is disabled
+            FloatingBubbleController.shared.disableTextInputMode()
             return
         }
         
-        // Toggle expanded state
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+        // Toggle expanded state - smooth in-place transformation
+        withAnimation(.easeInOut(duration: 0.25)) {
             isExpanded.toggle()
         }
         
@@ -287,7 +339,7 @@ struct FloatingBubbleView: View {
     private func saveTextInput(_ text: String) {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(.easeInOut(duration: 0.25)) {
                 showTextInput = false
                 textInputValue = ""
             }
@@ -314,7 +366,7 @@ struct FloatingBubbleView: View {
             print("BrainDump: ❌ Failed to save text input")
         }
         
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(.easeInOut(duration: 0.25)) {
             showTextInput = false
             textInputValue = ""
         }
@@ -416,7 +468,7 @@ struct FloatingBubbleView: View {
     private func handleDrop(providers: [NSItemProvider]) {
         // Close expanded state if open
         if isExpanded {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(.easeInOut(duration: 0.25)) {
                 isExpanded = false
             }
         }
@@ -672,12 +724,12 @@ struct FloatingBubbleView: View {
     // MARK: - Animations
     
     private func triggerPulse() {
-        withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+        withAnimation(.easeInOut(duration: 0.15)) {
             isPulsing = true
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation(.easeInOut(duration: 0.2)) {
                 isPulsing = false
             }
         }
@@ -751,7 +803,7 @@ struct ActionButton: View {
         }
         .buttonStyle(.plain)
         .scaleEffect(isHovering ? 1.1 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isHovering)
+        .animation(.easeInOut(duration: 0.15), value: isHovering)
         .onHover { hovering in
             isHovering = hovering
         }

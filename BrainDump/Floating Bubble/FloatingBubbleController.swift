@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import QuartzCore
 
 // MARK: - Custom Panel that can become key window
 
@@ -95,9 +96,45 @@ final class FloatingBubbleController {
                 return
             }
             
+            // If another app becomes active and text input is open, close it
+            if app.bundleIdentifier != Bundle.main.bundleIdentifier && self.isTextInputMode {
+                print("BrainDump: Another app activated while text input is open, closing text input")
+                // Post notification to close text input in the view
+                NotificationCenter.default.post(name: NSNotification.Name("CloseTextInput"), object: nil)
+                // Disable text input mode
+                self.disableTextInputMode()
+            }
+            
             // Track any app that's not BrainDump
             if app.bundleIdentifier != Bundle.main.bundleIdentifier {
                 self.lastNonBrainDumpApp = app
+            }
+        }
+        
+        // Also observe when the panel loses focus (window resigns key)
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            
+            // Check if the resigning window is our panel
+            if let window = notification.object as? NSPanel,
+               window == self.panel,
+               self.isTextInputMode {
+                // Small delay to check if another app actually became active
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                    guard let self = self else { return }
+                    // Check if another app is now active (not BrainDump)
+                    if let frontApp = NSWorkspace.shared.frontmostApplication,
+                       frontApp.bundleIdentifier != Bundle.main.bundleIdentifier,
+                       self.isTextInputMode {
+                        print("BrainDump: Panel lost focus to another app (\(frontApp.localizedName ?? "unknown")), closing text input")
+                        NotificationCenter.default.post(name: NSNotification.Name("CloseTextInput"), object: nil)
+                        self.disableTextInputMode()
+                    }
+                }
             }
         }
         
@@ -182,6 +219,24 @@ final class FloatingBubbleController {
     /// Show toast notification (called after hotkey capture)
     func showSaveToast() {
         ToastManager.shared.show()
+    }
+    
+    // MARK: - Hotkey Actions
+    
+    /// Trigger text input mode via hotkey
+    func triggerTextInput() {
+        capturePreviousActiveApp()
+        NotificationCenter.default.post(name: NSNotification.Name("TriggerTextInput"), object: nil)
+    }
+    
+    /// Trigger partial screenshot via hotkey
+    func triggerPartialScreenshot() {
+        NotificationCenter.default.post(name: NSNotification.Name("TriggerPartialScreenshot"), object: nil)
+    }
+    
+    /// Trigger full screenshot via hotkey
+    func triggerFullScreenshot() {
+        NotificationCenter.default.post(name: NSNotification.Name("TriggerFullScreenshot"), object: nil)
     }
     
     // MARK: - Panel Creation
@@ -323,8 +378,9 @@ final class FloatingBubbleController {
             y: (targetHeight - expandedHeight) / 2
         )
         
-        // Animate panel resize
-        panel.setFrame(newFrame, display: true, animate: true)
+        // Resize panel without animation - SwiftUI handles the visual transitions
+        // This prevents the bouncing effect and keeps the bubble visually in place
+        panel.setFrame(newFrame, display: true, animate: false)
     }
     
     // MARK: - Position Management

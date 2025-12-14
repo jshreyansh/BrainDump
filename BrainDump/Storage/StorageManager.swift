@@ -251,11 +251,62 @@ final class StorageManager: ObservableObject {
         return loadItems(for: dateFolder)
     }
     
+    // MARK: - Edit Methods
+    
+    /// Edit text content of a text item (preserves metadata frontmatter)
+    func editText(_ item: CapturedItem, newText: String) -> Bool {
+        guard item.type == .text else { return false }
+        
+        // Load existing file to preserve frontmatter
+        guard let existingContent = try? String(contentsOf: item.filePath, encoding: .utf8) else {
+            return false
+        }
+        
+        // Extract frontmatter if present
+        var frontmatter = ""
+        var contentStart = existingContent.startIndex
+        
+        if existingContent.hasPrefix("---\n") {
+            let startIndex = existingContent.index(existingContent.startIndex, offsetBy: 4)
+            if let endRange = existingContent.range(of: "\n---\n", range: startIndex..<existingContent.endIndex) {
+                frontmatter = String(existingContent[..<endRange.upperBound])
+                contentStart = endRange.upperBound
+            }
+        }
+        
+        // Format new content with preserved frontmatter
+        let trimmedText = newText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let newContent: String
+        if frontmatter.isEmpty {
+            // No frontmatter, just save the text
+            newContent = trimmedText + "\n"
+        } else {
+            // Preserve frontmatter and update content
+            newContent = frontmatter + "\n\n" + trimmedText + "\n"
+        }
+        
+        do {
+            try newContent.write(to: item.filePath, atomically: true, encoding: .utf8)
+            return true
+        } catch {
+            print("Error editing text: \(error)")
+            return false
+        }
+    }
+    
     // MARK: - Delete Methods
     
     /// Delete a captured item
     func deleteItem(_ item: CapturedItem) -> Bool {
         do {
+            // Also delete metadata file if it's an image
+            if item.type == .image {
+                let metadataPath = item.filePath.deletingPathExtension().appendingPathExtension("meta.yaml")
+                if fileManager.fileExists(atPath: metadataPath.path) {
+                    try? fileManager.removeItem(at: metadataPath)
+                }
+            }
+            
             try fileManager.removeItem(at: item.filePath)
             loadDateFolders() // Refresh
             return true

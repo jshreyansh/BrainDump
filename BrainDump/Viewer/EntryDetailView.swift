@@ -31,6 +31,14 @@ struct EntryDetailView: View {
         .onAppear {
             loadItems(for: folder)
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ItemDeleted"))) { _ in
+            // Refresh when an item is deleted
+            loadItems(for: folder)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ItemEdited"))) { _ in
+            // Refresh when an item is edited
+            loadItems(for: folder)
+        }
     }
     
     // MARK: - Timeline View
@@ -173,6 +181,10 @@ struct EntryCard: View {
     @State private var displayTags: [DisplayTag] = []
     @State private var isExpanded = false
     @State private var needsExpansion = false
+    @State private var isEditing = false
+    @State private var editedText: String = ""
+    @State private var showDeleteConfirmation = false
+    @ObservedObject private var storageManager = StorageManager.shared
 
     
     var body: some View {
@@ -196,6 +208,33 @@ struct EntryCard: View {
                 
                 // Action buttons
                 HStack(spacing: 8) {
+                    // Edit button (only for text items)
+                    if item.type == .text {
+                        Button(action: {
+                            editedText = textContent
+                            isEditing = true
+                        }) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 16))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .frame(width: 24)
+                        .help("Edit")
+                    }
+                    
+                    // Delete button
+                    Button(action: {
+                        showDeleteConfirmation = true
+                    }) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 16))
+                            .foregroundColor(.red.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: 24)
+                    .help("Delete")
+                    
                     // Copy button (only for text items)
                     if item.type == .text {
                         Button(action: {
@@ -210,6 +249,7 @@ struct EntryCard: View {
                         }
                         .buttonStyle(.plain)
                         .frame(width: 24)
+                        .help("Copy")
                     }
                     
                     // Menu button (hamburger icon - using Menu with hidden indicator)
@@ -251,6 +291,31 @@ struct EntryCard: View {
         )
         .onAppear {
             loadContent()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ItemEdited"))) { notification in
+            // Reload content if this item was edited
+            if let editedItemId = notification.object as? UUID, editedItemId == item.id {
+                isLoaded = false
+                loadContent()
+            }
+        }
+        .sheet(isPresented: $isEditing) {
+            EditTextView(item: item, text: $editedText, isPresented: $isEditing)
+        }
+        .alert("Delete Item", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteItem()
+            }
+        } message: {
+            Text("Are you sure you want to delete this item? This action cannot be undone.")
+        }
+    }
+    
+    private func deleteItem() {
+        if storageManager.deleteItem(item) {
+            // Trigger refresh by posting notification
+            NotificationCenter.default.post(name: NSNotification.Name("ItemDeleted"), object: item.id)
         }
     }
     
@@ -499,6 +564,76 @@ struct EntryDetailEmptyView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .textBackgroundColor))
+    }
+}
+
+// MARK: - Edit Text View
+
+struct EditTextView: View {
+    let item: CapturedItem
+    @Binding var text: String
+    @Binding var isPresented: Bool
+    @State private var editedText: String = ""
+    @FocusState private var isFocused: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            HStack {
+                Text("Edit Note")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Button("Cancel") {
+                    isPresented = false
+                }
+                .keyboardShortcut(.cancelAction)
+            }
+            
+            // Text editor
+            TextEditor(text: $editedText)
+                .font(.body)
+                .frame(minHeight: 300)
+                .padding(8)
+                .background(Color(nsColor: .textBackgroundColor))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.gray.opacity(0.3), lineWidth: 1)
+                )
+                .focused($isFocused)
+            
+            // Footer with save button
+            HStack {
+                Spacer()
+                
+                Button("Save") {
+                    saveChanges()
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 600, height: 450)
+        .onAppear {
+            editedText = text
+            // Focus the text editor after a short delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isFocused = true
+            }
+        }
+    }
+    
+    private func saveChanges() {
+        if StorageManager.shared.editText(item, newText: editedText) {
+            text = editedText
+            // Post notification to refresh the list
+            NotificationCenter.default.post(name: NSNotification.Name("ItemEdited"), object: item.id)
+            isPresented = false
+        }
     }
 }
 

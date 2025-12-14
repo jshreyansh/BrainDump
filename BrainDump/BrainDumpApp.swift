@@ -24,9 +24,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Show floating bubble
         FloatingBubbleController.shared.show()
         
+        // Set up hotkey callbacks
+        HotkeyManager.shared.onTextInputHotkeyPressed = {
+            FloatingBubbleController.shared.triggerTextInput()
+        }
+        HotkeyManager.shared.onPartialScreenshotHotkeyPressed = {
+            FloatingBubbleController.shared.triggerPartialScreenshot()
+        }
+        HotkeyManager.shared.onFullScreenshotHotkeyPressed = {
+            FloatingBubbleController.shared.triggerFullScreenshot()
+        }
+        
         // Check and request accessibility permission for hotkey
         if HotkeyManager.checkAccessibilityPermission() {
-            // Register global hotkey
+            // Register global hotkeys
             HotkeyManager.shared.register()
             
             // Start selection monitoring (requires accessibility permission)

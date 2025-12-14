@@ -6,23 +6,40 @@ final class HotkeyManager {
     
     static let shared = HotkeyManager()
     
-    /// The registered hotkey reference
-    private var hotkeyRef: EventHotKeyRef?
+    /// The registered hotkey references
+    private var hotkeyRefs: [UInt32: EventHotKeyRef] = [:]
     
-    /// Unique hotkey ID
-    let hotkeyID = EventHotKeyID(signature: OSType(0x4244), id: 1) // "BD" for BrainDump
+    /// Hotkey IDs
+    enum HotkeyID: UInt32 {
+        case capture = 1        // ⌘⌥D - Original capture hotkey
+        case textInput = 2      // ⌘⌥[ - Text input
+        case partialScreenshot = 3  // ⌘⌥] - Partial screenshot
+        case fullScreenshot = 4     // ⌘⌥\ - Full screenshot
+    }
     
-    /// Whether the hotkey is currently registered
+    /// Signature for all hotkeys
+    let hotkeySignature = OSType(0x4244) // "BD" for BrainDump
+    
+    /// Whether hotkeys are currently registered
     private(set) var isRegistered = false
     
-    /// Callback when hotkey is triggered
+    /// Callback when capture hotkey is triggered
     var onHotkeyPressed: (() -> Void)?
+    
+    /// Callback when text input hotkey is triggered
+    var onTextInputHotkeyPressed: (() -> Void)?
+    
+    /// Callback when partial screenshot hotkey is triggered
+    var onPartialScreenshotHotkeyPressed: (() -> Void)?
+    
+    /// Callback when full screenshot hotkey is triggered
+    var onFullScreenshotHotkeyPressed: (() -> Void)?
     
     private init() {}
     
     // MARK: - Registration
     
-    /// Register the global hotkey (⌘ + ⌥ + D)
+    /// Register all global hotkeys
     func register() {
         guard !isRegistered else { return }
         
@@ -38,14 +55,30 @@ final class HotkeyManager {
             nil
         )
         
-        // Register hotkey: ⌘ + ⌥ + D
-        // D key = 0x02
-        // Command = cmdKey (256)
-        // Option = optionKey (2048)
         let modifiers: UInt32 = UInt32(cmdKey | optionKey)
-        let keyCode: UInt32 = 0x02 // D key
         
-        let hotkeyID = self.hotkeyID
+        // Register all hotkeys
+        // 1. Original capture hotkey: ⌘⌥D
+        registerHotkey(keyCode: 0x02, modifiers: modifiers, id: .capture, description: "⌘⌥D")
+        
+        // 2. Text input: ⌘⌥[
+        // [ key code = 0x21 (33 decimal)
+        registerHotkey(keyCode: 0x21, modifiers: modifiers, id: .textInput, description: "⌘⌥[")
+        
+        // 3. Partial screenshot: ⌘⌥]
+        // ] key code = 0x1E (30 decimal)
+        registerHotkey(keyCode: 0x1E, modifiers: modifiers, id: .partialScreenshot, description: "⌘⌥]")
+        
+        // 4. Full screenshot: ⌘⌥\
+        // \ key code = 0x2A (42 decimal)
+        registerHotkey(keyCode: 0x2A, modifiers: modifiers, id: .fullScreenshot, description: "⌘⌥\\")
+        
+        isRegistered = true
+    }
+    
+    /// Register a single hotkey
+    private func registerHotkey(keyCode: UInt32, modifiers: UInt32, id: HotkeyID, description: String) {
+        let hotkeyID = EventHotKeyID(signature: hotkeySignature, id: id.rawValue)
         var hotkeyRef: EventHotKeyRef?
         
         let status = RegisterEventHotKey(
@@ -57,23 +90,25 @@ final class HotkeyManager {
             &hotkeyRef
         )
         
-        if status == noErr {
-            self.hotkeyRef = hotkeyRef
-            isRegistered = true
-            print("BrainDump: Global hotkey ⌘⌥D registered successfully")
+        if status == noErr, let ref = hotkeyRef {
+            hotkeyRefs[id.rawValue] = ref
+            print("BrainDump: Global hotkey \(description) registered successfully")
         } else {
-            print("BrainDump: Failed to register global hotkey, status: \(status)")
+            print("BrainDump: Failed to register hotkey \(description), status: \(status)")
         }
     }
     
-    /// Unregister the global hotkey
+    /// Unregister all global hotkeys
     func unregister() {
-        guard isRegistered, let hotkeyRef = hotkeyRef else { return }
+        guard isRegistered else { return }
         
-        UnregisterEventHotKey(hotkeyRef)
-        self.hotkeyRef = nil
+        for (_, hotkeyRef) in hotkeyRefs {
+            UnregisterEventHotKey(hotkeyRef)
+        }
+        
+        hotkeyRefs.removeAll()
         isRegistered = false
-        print("BrainDump: Global hotkey unregistered")
+        print("BrainDump: All global hotkeys unregistered")
     }
     
     // MARK: - Capture Flow
@@ -184,9 +219,20 @@ private func hotkeyHandler(
         &hotkeyID
     )
     
-    if status == noErr && hotkeyID.id == manager.hotkeyID.id {
+    if status == noErr && hotkeyID.signature == manager.hotkeySignature {
         DispatchQueue.main.async {
-            manager.handleHotkeyPressed()
+            if let hotkeyType = HotkeyManager.HotkeyID(rawValue: hotkeyID.id) {
+                switch hotkeyType {
+                case .capture:
+                    manager.handleHotkeyPressed()
+                case .textInput:
+                    manager.onTextInputHotkeyPressed?()
+                case .partialScreenshot:
+                    manager.onPartialScreenshotHotkeyPressed?()
+                case .fullScreenshot:
+                    manager.onFullScreenshotHotkeyPressed?()
+                }
+            }
         }
     }
     
