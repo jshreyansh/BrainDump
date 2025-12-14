@@ -13,8 +13,12 @@ final class MetadataCapture {
     // MARK: - Main Capture Methods
     
     /// Capture metadata for a text capture
-    func captureForText(_ text: String, method: CaptureMetadata.CaptureMethod) -> CaptureMetadata {
-        let appInfo = captureSourceAppInfo()
+    /// - Parameters:
+    ///   - text: The text content to capture
+    ///   - method: The capture method used
+    ///   - sourceApp: Optional source app to use (useful when BrainDump is frontmost, e.g., during floating widget text input)
+    func captureForText(_ text: String, method: CaptureMetadata.CaptureMethod, sourceApp: NSRunningApplication? = nil) -> CaptureMetadata {
+        let appInfo = captureSourceAppInfo(sourceApp: sourceApp)
         let textAnalysis = analyzeText(text)
         let deviceInfo = captureDeviceInfo()
         
@@ -111,15 +115,22 @@ final class MetadataCapture {
         let windowTitle: String?
     }
     
-    private func captureSourceAppInfo() -> AppInfo {
+    private func captureSourceAppInfo(sourceApp: NSRunningApplication? = nil) -> AppInfo {
+        // If a source app is provided (e.g., from floating widget), use it
+        if let providedApp = sourceApp {
+            let name = providedApp.localizedName
+            let bundleId = providedApp.bundleIdentifier
+            let windowTitle = getWindowTitle(for: providedApp)
+            return AppInfo(name: name, bundleId: bundleId, windowTitle: windowTitle)
+        }
+        
         guard let frontApp = NSWorkspace.shared.frontmostApplication else {
             return AppInfo(name: nil, bundleId: nil, windowTitle: nil)
         }
         
         // Skip if BrainDump is frontmost (happens during bubble text input)
         if frontApp.bundleIdentifier == Bundle.main.bundleIdentifier {
-            // Try to get the previously active app from stored reference
-            // For now, return nil - we'll capture as "Quick Note"
+            // No source app provided and BrainDump is frontmost
             return AppInfo(name: nil, bundleId: nil, windowTitle: nil)
         }
         

@@ -86,14 +86,18 @@ final class StorageManager: ObservableObject {
     // MARK: - Save Methods
     
     /// Save text content and return the created item
+    /// - Parameters:
+    ///   - text: The text content to save
+    ///   - method: The capture method used
+    ///   - sourceApp: Optional source app to use for metadata (useful when BrainDump is frontmost)
     @discardableResult
-    func saveText(_ text: String, method: CaptureMetadata.CaptureMethod = .unknown) -> CapturedItem? {
+    func saveText(_ text: String, method: CaptureMetadata.CaptureMethod = .unknown, sourceApp: NSRunningApplication? = nil) -> CapturedItem? {
         let todayFolder = getTodayFolder()
         let filename = generateFilename(extension: "md")
         let fileURL = todayFolder.appendingPathComponent(filename)
         
         // Capture metadata
-        let metadata = MetadataCapture.shared.captureForText(text, method: method)
+        let metadata = MetadataCapture.shared.captureForText(text, method: method, sourceApp: sourceApp)
         
         // Format content with metadata frontmatter
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)

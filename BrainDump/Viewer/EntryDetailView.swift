@@ -173,6 +173,7 @@ struct EntryCard: View {
     @State private var displayTags: [DisplayTag] = []
     @State private var isExpanded = false
     @State private var needsExpansion = false
+
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

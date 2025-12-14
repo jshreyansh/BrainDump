@@ -82,6 +82,17 @@ final class HotkeyManager {
     func handleHotkeyPressed() {
         print("BrainDump: Hotkey pressed, initiating capture...")
         
+        // Capture the source app BEFORE we do anything else
+        // This ensures we get the app the user was in when they pressed the hotkey
+        let sourceApp = NSWorkspace.shared.frontmostApplication
+        
+        // Skip if BrainDump is frontmost (shouldn't happen with global hotkey, but just in case)
+        let capturedSourceApp = (sourceApp?.bundleIdentifier == Bundle.main.bundleIdentifier) ? nil : sourceApp
+        
+        if let appName = capturedSourceApp?.localizedName {
+            print("BrainDump: Capturing from source app: \(appName)")
+        }
+        
         // Get current clipboard state
         let previousChangeCount = ClipboardHelper.shared.getClipboardChangeCount()
         
@@ -93,11 +104,11 @@ final class HotkeyManager {
         
         // Wait briefly for clipboard to update, then check for content
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            self?.processClipboardContent(previousChangeCount: previousChangeCount)
+            self?.processClipboardContent(previousChangeCount: previousChangeCount, sourceApp: capturedSourceApp)
         }
     }
     
-    private func processClipboardContent(previousChangeCount: Int) {
+    private func processClipboardContent(previousChangeCount: Int, sourceApp: NSRunningApplication?) {
         let clipboard = ClipboardHelper.shared
         
         // Check if clipboard changed (new content was copied)
@@ -105,7 +116,7 @@ final class HotkeyManager {
         
         // Try to save text first
         if let text = clipboard.readText(), !text.isEmpty {
-            if StorageManager.shared.saveText(text, method: .hotkey) != nil {
+            if StorageManager.shared.saveText(text, method: .hotkey, sourceApp: sourceApp) != nil {
                 print("BrainDump: Text saved successfully via hotkey")
                 showSaveConfirmation()
                 return

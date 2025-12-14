@@ -26,6 +26,11 @@ struct FloatingBubbleView: View {
     private let actionButtonSize: CGFloat = 36
     private let expandedRadius: CGFloat = 50
     
+    // Pill shape dimensions for default state
+    private let pillWidth: CGFloat = 120
+    private let pillHeight: CGFloat = 32
+    private let pillCornerRadius: CGFloat = 16
+    
     var body: some View {
         ZStack {
             // Action buttons (shown when expanded)
@@ -36,16 +41,17 @@ struct FloatingBubbleView: View {
                     label: "Text",
                     color: .blue
                 ) {
+                    // Capture the previous active app BEFORE BrainDump becomes active
+                    // This ensures we get the correct source app for metadata
+                    FloatingBubbleController.shared.capturePreviousActiveApp()
+                    
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                         showTextInput = true
                         isExpanded = false
                     }
                 }
                 .offset(x: -expandedRadius, y: -30)
-                .transition(.asymmetric(
-                    insertion: .scale.combined(with: .opacity).combined(with: .offset(x: 20, y: 15)),
-                    removal: .scale.combined(with: .opacity)
-                ))
+                .transition(.scale.combined(with: .opacity))
                 
                 // Image/Screenshot button (interactive selection) - positioned to the right
                 ActionButton(
@@ -62,10 +68,7 @@ struct FloatingBubbleView: View {
                     }
                 }
                 .offset(x: expandedRadius, y: -30)
-                .transition(.asymmetric(
-                    insertion: .scale.combined(with: .opacity).combined(with: .offset(x: -20, y: 15)),
-                    removal: .scale.combined(with: .opacity)
-                ))
+                .transition(.scale.combined(with: .opacity))
                 
                 // Full screenshot button - positioned below
                 ActionButton(
@@ -82,10 +85,7 @@ struct FloatingBubbleView: View {
                     }
                 }
                 .offset(x: 0, y: expandedRadius + 10)
-                .transition(.asymmetric(
-                    insertion: .scale.combined(with: .opacity).combined(with: .offset(x: 0, y: -15)),
-                    removal: .scale.combined(with: .opacity)
-                ))
+                .transition(.scale.combined(with: .opacity))
             }
             
             // Text input popup (shown when text mode is active)
@@ -109,68 +109,41 @@ struct FloatingBubbleView: View {
                 ))
             }
             
-            // Main bubble
+            // Main bubble - pill shape when collapsed, circle when expanded
             ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.95),
-                                Color.white.opacity(0.85)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: bubbleSize, height: bubbleSize)
-                    .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-                
-                // Inner glow when hovering, drag over, or expanded
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color.accentColor.opacity(isDragOver ? 0.3 : (isExpanded ? 0.25 : (isHovering ? 0.15 : 0))),
-                                Color.clear
-                            ],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: bubbleSize / 2
-                        )
-                    )
-                    .frame(width: bubbleSize, height: bubbleSize)
-                
-                // Brain icon (changes when expanded)
-                Image(systemName: isExpanded ? "xmark" : "brain.head.profile")
-                    .font(.system(size: isExpanded ? 18 : 22, weight: .medium))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: isExpanded ? [Color.gray, Color.gray.opacity(0.7)] : [Color.purple, Color.blue],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .scaleEffect(isPulsing ? 1.15 : 1.0)
-                    .rotationEffect(.degrees(isExpanded ? 0 : 0))
-                
-                // Drop indicator ring
-                if isDragOver {
+                if isExpanded {
+                    // Expanded state: Circle (keeping original design)
                     Circle()
-                        .strokeBorder(
+                        .fill(
                             LinearGradient(
-                                colors: [Color.purple, Color.blue],
+                                colors: [
+                                    Color.white.opacity(0.95),
+                                    Color.white.opacity(0.85)
+                                ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 3
+                            )
                         )
-                        .frame(width: bubbleSize + 8, height: bubbleSize + 8)
-                        .transition(.scale.combined(with: .opacity))
-                }
-                
-                // Expanded state ring
-                if isExpanded {
+                        .frame(width: bubbleSize, height: bubbleSize)
+                        .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
+                        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+                    
+                    // Inner glow when expanded
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.accentColor.opacity(isDragOver ? 0.3 : 0.25),
+                                    Color.clear
+                                ],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: bubbleSize / 2
+                            )
+                        )
+                        .frame(width: bubbleSize, height: bubbleSize)
+                    
+                    // Expanded state ring
                     Circle()
                         .strokeBorder(
                             LinearGradient(
@@ -181,13 +154,84 @@ struct FloatingBubbleView: View {
                             lineWidth: 2
                         )
                         .frame(width: bubbleSize + 6, height: bubbleSize + 6)
+                } else {
+                    // Default state: Pill shape with Apple's glass material
+                    RoundedRectangle(cornerRadius: pillCornerRadius)
+                        .fill(.ultraThinMaterial)
+                        .frame(width: pillWidth, height: pillHeight)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: pillCornerRadius)
+                                .strokeBorder(
+                                    Color.primary.opacity(isHovering ? 0.3 : 0.15),
+                                    lineWidth: isHovering ? 1.5 : 1.0
+                                )
+                        )
+                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
+                        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                    
+                    // Subtle inner glow on hover/drag
+                    if isHovering || isDragOver {
+                        RoundedRectangle(cornerRadius: pillCornerRadius)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.accentColor.opacity(isDragOver ? 0.15 : 0.08),
+                                        Color.clear
+                                    ],
+                                    startPoint: .center,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .frame(width: pillWidth, height: pillHeight)
+                    }
+                }
+                
+                // Brain icon (changes when expanded)
+                Image(systemName: isExpanded ? "xmark" : "brain.head.profile")
+                    .font(.system(size: isExpanded ? 18 : 16, weight: .medium))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: isExpanded ? [Color.gray, Color.gray.opacity(0.7)] : [Color.purple, Color.blue],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .scaleEffect(isPulsing ? 1.15 : 1.0)
+                
+                // Drop indicator (works for both pill and circle)
+                if isDragOver {
+                    if isExpanded {
+                        Circle()
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [Color.purple, Color.blue],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 3
+                            )
+                            .frame(width: bubbleSize + 8, height: bubbleSize + 8)
+                            .transition(.scale.combined(with: .opacity))
+                    } else {
+                        RoundedRectangle(cornerRadius: pillCornerRadius + 2)
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [Color.purple, Color.blue],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2.5
+                            )
+                            .frame(width: pillWidth + 4, height: pillHeight + 4)
+                            .transition(.scale.combined(with: .opacity))
+                    }
                 }
             }
-            .scaleEffect(isPulsing ? 1.1 : 1.0)
+            .scaleEffect(isPulsing ? 1.05 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPulsing)
             .animation(.easeInOut(duration: 0.2), value: isDragOver)
             .animation(.easeInOut(duration: 0.15), value: isHovering)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isExpanded)
+            .animation(.spring(response: 0.35, dampingFraction: 0.75), value: isExpanded)
             .onHover { hovering in
                 isHovering = hovering
             }
@@ -199,7 +243,18 @@ struct FloatingBubbleView: View {
                 return true
             }
         }
-        .frame(width: 200, height: 250) // Larger frame to accommodate expanded state with 3 buttons
+        .onChange(of: isExpanded) { newValue in
+            // Notify controller to resize panel
+            FloatingBubbleController.shared.updatePanelSize(isExpanded: newValue, showTextInput: showTextInput)
+        }
+        .onChange(of: showTextInput) { newValue in
+            // Notify controller to resize panel
+            FloatingBubbleController.shared.updatePanelSize(isExpanded: isExpanded, showTextInput: newValue)
+        }
+        .onAppear {
+            // Set initial size when view appears
+            FloatingBubbleController.shared.updatePanelSize(isExpanded: isExpanded, showTextInput: showTextInput)
+        }
     }
     
     // MARK: - Supported Drop Types
@@ -241,7 +296,17 @@ struct FloatingBubbleView: View {
         
         print("BrainDump: Saving manual text input (\(trimmedText.count) chars)")
         
-        if let savedItem = StorageManager.shared.saveText(trimmedText, method: .bubbleText) {
+        // Get the previous active app (captured before BrainDump became frontmost)
+        // This allows us to capture the source app metadata correctly
+        let sourceApp = FloatingBubbleController.shared.previousActiveApp
+        
+        if let appName = sourceApp?.localizedName {
+            print("BrainDump: Using source app: \(appName) (bundle: \(sourceApp?.bundleIdentifier ?? "unknown"))")
+        } else {
+            print("BrainDump: ⚠️ No source app captured - will use current frontmost app")
+        }
+        
+        if let savedItem = StorageManager.shared.saveText(trimmedText, method: .bubbleText, sourceApp: sourceApp) {
             print("BrainDump: ✅ Text input saved")
             onDrop?(savedItem)
             onShowToast?()
@@ -638,23 +703,45 @@ struct ActionButton: View {
         Button(action: action) {
             VStack(spacing: 4) {
                 ZStack {
+                    // Glass morphism background
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Circle()
+                                .strokeBorder(
+                                    Color.primary.opacity(isHovering ? 0.25 : 0.15),
+                                    lineWidth: isHovering ? 1.5 : 1.0
+                                )
+                        )
+                        .shadow(color: .black.opacity(0.1), radius: isHovering ? 8 : 4, x: 0, y: 2)
+                        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                    
+                    // Subtle color tint overlay
                     Circle()
                         .fill(
-                            LinearGradient(
+                            RadialGradient(
                                 colors: [
-                                    color.opacity(0.9),
-                                    color.opacity(0.7)
+                                    color.opacity(isHovering ? 0.2 : 0.1),
+                                    Color.clear
                                 ],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 18
+                            )
+                        )
+                        .frame(width: 36, height: 36)
+                    
+                    // Icon with color
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.8)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 36, height: 36)
-                        .shadow(color: color.opacity(0.4), radius: isHovering ? 8 : 4, x: 0, y: 2)
-                    
-                    Image(systemName: icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
                 }
                 
                 Text(label)

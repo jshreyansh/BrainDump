@@ -66,6 +66,7 @@ struct BubbleWithToast: View {
                 Spacer()
             }
         }
+        // Use expanded size for content, but panel will resize dynamically
         .frame(width: 280, height: 330)
     }
 }

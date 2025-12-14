@@ -18,6 +18,44 @@ final class KeyablePanel: NSPanel {
     }
 }
 
+// MARK: - Custom Hit-Testing View
+
+/// A custom view that only responds to mouse events within the actual content area
+/// This prevents the large invisible panel area from blocking mouse events
+final class HitTestingView: NSView {
+    
+    /// The content bounds that should respond to mouse events
+    var contentBounds: CGRect = .zero
+    
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // Convert point to this view's coordinate system
+        let localPoint = convert(point, from: superview)
+        
+        // Only respond if the point is within the content bounds
+        if contentBounds.contains(localPoint) {
+            // Check if any subview (like the hosting view) should handle this
+            for subview in subviews.reversed() {
+                let subviewPoint = convert(point, to: subview)
+                if let hitView = subview.hitTest(subviewPoint) {
+                    return hitView
+                }
+            }
+            return self
+        }
+        
+        // Return nil to allow mouse events to pass through to windows behind
+        return nil
+    }
+    
+    override var acceptsFirstResponder: Bool {
+        return true
+    }
+    
+    override var mouseDownCanMoveWindow: Bool {
+        return true
+    }
+}
+
 // MARK: - Floating Bubble Controller
 
 /// Controller for the floating bubble window
@@ -25,9 +63,85 @@ final class FloatingBubbleController {
     
     private var panel: KeyablePanel?
     private var hostingView: NSHostingView<BubbleWithToast>?
+    private var hitTestingView: HitTestingView?
+    
+    // Panel size constants
+    private let pillWidth: CGFloat = 120
+    private let pillHeight: CGFloat = 32
+    private let collapsedWidth: CGFloat = 130  // Pill width (120) + small padding
+    private let collapsedHeight: CGFloat = 42  // Pill height (32) + small padding
+    private let expandedWidth: CGFloat = 280
+    private let expandedHeight: CGFloat = 330
     
     /// Store the previously active app to restore focus after text input
-    private var previousActiveApp: NSRunningApplication?
+    /// Also used for capturing source app metadata when saving text
+    private(set) var previousActiveApp: NSRunningApplication?
+    
+    /// Track the last non-BrainDump app that was active
+    /// This is updated whenever an app becomes active
+    private var lastNonBrainDumpApp: NSRunningApplication?
+    
+    private var appActivationObserver: NSObjectProtocol?
+    
+    private init() {
+        // Observe app activation changes to track the last non-BrainDump app
+        appActivationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self,
+                  let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
+                return
+            }
+            
+            // Track any app that's not BrainDump
+            if app.bundleIdentifier != Bundle.main.bundleIdentifier {
+                self.lastNonBrainDumpApp = app
+            }
+        }
+        
+        // Initialize with current frontmost app if it's not BrainDump
+        if let frontApp = NSWorkspace.shared.frontmostApplication,
+           frontApp.bundleIdentifier != Bundle.main.bundleIdentifier {
+            lastNonBrainDumpApp = frontApp
+        }
+    }
+    
+    deinit {
+        if let observer = appActivationObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
+    }
+    
+    /// Capture the current frontmost app (before BrainDump becomes active)
+    /// This should be called when the user initiates text input, before enabling text input mode
+    func capturePreviousActiveApp() {
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else {
+            // Fallback to last known non-BrainDump app
+            previousActiveApp = lastNonBrainDumpApp
+            if let app = lastNonBrainDumpApp {
+                print("BrainDump: Captured previous app (fallback): \(app.localizedName ?? "unknown")")
+            }
+            return
+        }
+        
+        // If BrainDump is frontmost, use the last tracked non-BrainDump app
+        if frontApp.bundleIdentifier == Bundle.main.bundleIdentifier {
+            previousActiveApp = lastNonBrainDumpApp
+            if let app = lastNonBrainDumpApp {
+                print("BrainDump: Captured previous app (BrainDump was frontmost): \(app.localizedName ?? "unknown")")
+            } else {
+                print("BrainDump: ⚠️ BrainDump is frontmost but no previous app tracked")
+            }
+        } else {
+            // BrainDump is not frontmost, so capture the current app
+            previousActiveApp = frontApp
+            // Also update our tracking
+            lastNonBrainDumpApp = frontApp
+            print("BrainDump: Captured previous app: \(frontApp.localizedName ?? "unknown")")
+        }
+    }
     
     /// Shared instance
     static let shared = FloatingBubbleController()
@@ -39,8 +153,6 @@ final class FloatingBubbleController {
     
     /// Whether text input mode is active
     private(set) var isTextInputMode = false
-    
-    private init() {}
     
     // MARK: - Public Methods
     
@@ -78,21 +190,42 @@ final class FloatingBubbleController {
         // Create content with toast capability
         let contentView = BubbleWithToast()
         
-        // Larger frame to accommodate expanded actions (3 buttons) and text input
-        let panelWidth: CGFloat = 280
-        let panelHeight: CGFloat = 330
+        // Start with collapsed size (pill shape)
+        let panelWidth = collapsedWidth
+        let panelHeight = collapsedHeight
         
+        // Create hit-testing wrapper view
+        let hitTestingView = HitTestingView()
+        hitTestingView.frame = NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight)
+        // Initial state is collapsed, so only pill area should respond to hits
+        let pillX = (panelWidth - pillWidth) / 2
+        let pillY = (panelHeight - pillHeight) / 2
+        hitTestingView.contentBounds = NSRect(
+            x: pillX,
+            y: pillY,
+            width: pillWidth,
+            height: pillHeight
+        )
+        self.hitTestingView = hitTestingView
+        
+        // Create hosting view with expanded size to accommodate all states
+        // The hosting view is larger than the panel when collapsed, but that's OK
+        // because hit-testing will only respond to the visible area
         let hostingView = NSHostingView(rootView: contentView)
-        hostingView.frame.size = CGSize(width: panelWidth, height: panelHeight)
+        hostingView.frame.size = CGSize(width: expandedWidth, height: expandedHeight)
         self.hostingView = hostingView
         
-        // Calculate initial position (bottom-right, 20px inset)
+        // Add hosting view to hit-testing view, centered
+        hitTestingView.addSubview(hostingView)
+        hostingView.frame.origin = CGPoint(x: (panelWidth - expandedWidth) / 2, y: (panelHeight - expandedHeight) / 2)
+        
+        // Calculate initial position (center top, 20px inset from top)
         let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
         let inset: CGFloat = 20
         
-        // Position so the bubble (center of panel) is in bottom-right
-        let panelX = screenFrame.maxX - panelWidth / 2 - 40 - inset
-        let panelY = screenFrame.minY + inset - panelHeight / 2 + 40
+        // Position so the bubble (center of panel) is at center top
+        let panelX = screenFrame.midX - panelWidth / 2
+        let panelY = screenFrame.maxY - inset - panelHeight / 2
         
         let contentRect = NSRect(x: panelX, y: panelY, width: panelWidth, height: panelHeight)
         
@@ -117,26 +250,94 @@ final class FloatingBubbleController {
         panel.isMovableByWindowBackground = true
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
+        // Enable mouse events but use hit-testing to filter them
         panel.ignoresMouseEvents = false
         panel.acceptsMouseMovedEvents = true
         
         // Set content view
-        panel.contentView = hostingView
+        panel.contentView = hitTestingView
         
         self.panel = panel
     }
     
+    // MARK: - Dynamic Resizing
+    
+    /// Update panel size based on expanded/collapsed state
+    func updatePanelSize(isExpanded: Bool, showTextInput: Bool) {
+        guard let panel = panel, let hitTestingView = hitTestingView, let hostingView = hostingView else { return }
+        
+        // Determine target size
+        let targetWidth: CGFloat
+        let targetHeight: CGFloat
+        
+        if showTextInput {
+            // Text input needs more space
+            targetWidth = expandedWidth
+            targetHeight = expandedHeight
+        } else if isExpanded {
+            // Expanded state needs space for action buttons
+            targetWidth = expandedWidth
+            targetHeight = expandedHeight
+        } else {
+            // Collapsed state - just pill size
+            targetWidth = collapsedWidth
+            targetHeight = collapsedHeight
+        }
+        
+        // Get current frame
+        let currentFrame = panel.frame
+        let centerX = currentFrame.midX
+        let centerY = currentFrame.midY
+        
+        // Calculate new frame (centered on current position)
+        let newFrame = NSRect(
+            x: centerX - targetWidth / 2,
+            y: centerY - targetHeight / 2,
+            width: targetWidth,
+            height: targetHeight
+        )
+        
+        // Update hit-testing view bounds
+        hitTestingView.frame = NSRect(x: 0, y: 0, width: targetWidth, height: targetHeight)
+        
+        // Set content bounds based on state
+        // When collapsed, only the pill area should respond to hits
+        // When expanded, the entire panel should respond
+        if showTextInput || isExpanded {
+            hitTestingView.contentBounds = NSRect(x: 0, y: 0, width: targetWidth, height: targetHeight)
+        } else {
+            // Collapsed: only the pill area (centered in the panel)
+            let pillX = (targetWidth - pillWidth) / 2
+            let pillY = (targetHeight - pillHeight) / 2
+            hitTestingView.contentBounds = NSRect(
+                x: pillX,
+                y: pillY,
+                width: pillWidth,
+                height: pillHeight
+            )
+        }
+        
+        // Update hosting view position (centered in hit-testing view)
+        hostingView.frame.origin = CGPoint(
+            x: (targetWidth - expandedWidth) / 2,
+            y: (targetHeight - expandedHeight) / 2
+        )
+        
+        // Animate panel resize
+        panel.setFrame(newFrame, display: true, animate: true)
+    }
+    
     // MARK: - Position Management
     
-    /// Reset position to default (bottom-right)
+    /// Reset position to default (center top)
     func resetPosition() {
         guard let panel = panel else { return }
         
         let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
         let inset: CGFloat = 20
         
-        let panelX = screenFrame.maxX - panel.frame.width / 2 - 40 - inset
-        let panelY = screenFrame.minY + inset - panel.frame.height / 2 + 40
+        let panelX = screenFrame.midX - panel.frame.width / 2
+        let panelY = screenFrame.maxY - inset - panel.frame.height / 2
         
         panel.setFrameOrigin(NSPoint(x: panelX, y: panelY))
     }
@@ -145,12 +346,17 @@ final class FloatingBubbleController {
     
     /// Enable text input mode - makes panel accept keyboard input
     /// This properly activates the app to receive keyboard events
+    /// Note: previousActiveApp should already be captured via capturePreviousActiveApp()
+    /// before calling this method
     func enableTextInputMode() {
         guard let panel = panel else { return }
         isTextInputMode = true
         
-        // Store the currently active app so we can restore it later
-        previousActiveApp = NSWorkspace.shared.frontmostApplication
+        // previousActiveApp should already be set by capturePreviousActiveApp()
+        // If not set, try to capture it now (fallback)
+        if previousActiveApp == nil {
+            capturePreviousActiveApp()
+        }
         
         // Remove nonactivatingPanel to allow keyboard input
         if panel.styleMask.contains(.nonactivatingPanel) {
