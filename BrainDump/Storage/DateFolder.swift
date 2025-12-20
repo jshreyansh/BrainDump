@@ -74,10 +74,18 @@ extension DateFolder {
             return nil
         }
         
-        // Count items in folder
+        // Count items in folder (exclude metadata files and other non-item files)
         let fileManager = FileManager.default
         let itemCount = (try? fileManager.contentsOfDirectory(at: folderURL, includingPropertiesForKeys: nil)
-            .filter { !$0.lastPathComponent.hasPrefix(".") }
+            .filter { url in
+                // Exclude hidden files
+                guard !url.lastPathComponent.hasPrefix(".") else { return false }
+                // Exclude metadata files (.meta.yaml)
+                let fileName = url.lastPathComponent
+                guard !fileName.hasSuffix(".meta.yaml") else { return false }
+                // Only count files that can be converted to CapturedItem
+                return CapturedItem.from(fileURL: url) != nil
+            }
             .count) ?? 0
         
         return DateFolder(

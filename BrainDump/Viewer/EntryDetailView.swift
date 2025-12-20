@@ -1,16 +1,21 @@
 import SwiftUI
 
-/// Timeline view showing all entries for selected date(s) in a continuous scrollable view
+/// Timeline view showing all entries for selected date(s) or tag in a continuous scrollable view
 struct EntryDetailView: View {
     
     let folder: DateFolder?
+    let selectedTag: String?
     @State private var items: [CapturedItem] = []
+    @State private var allItems: [CapturedItem] = [] // Store all items for filtering
+    @State private var itemsByDate: [Date: [CapturedItem]] = [:] // Items grouped by date (for tag view)
     @State private var isLoading = true
+    @State private var selectedTags: Set<String> = [] // Selected tag texts for filtering (chip filters)
+    @State private var allAvailableTags: [String] = [] // All unique tags in current view
     @ObservedObject private var storageManager = StorageManager.shared
     
     var body: some View {
         Group {
-            if let folder = folder {
+            if folder != nil || selectedTag != nil {
                 if isLoading {
                     loadingView
                 } else if items.isEmpty {
@@ -23,42 +28,144 @@ struct EntryDetailView: View {
             }
         }
         .onChange(of: folder) { newFolder in
-            loadItems(for: newFolder)
+            // Reset chip filters when folder changes
+            selectedTags.removeAll()
+            if selectedTag == nil {
+                loadItems(for: newFolder)
+            }
+        }
+        .onChange(of: selectedTag) { newTag in
+            // Reset chip filters when tag changes
+            selectedTags.removeAll()
+            if let tag = newTag {
+                loadItems(forTag: tag)
+            } else {
+                loadItems(for: folder)
+            }
         }
         .onChange(of: storageManager.dateFolders) { _ in
-            loadItems(for: folder)
+            if selectedTag != nil {
+                loadItems(forTag: selectedTag!)
+            } else {
+                loadItems(for: folder)
+            }
         }
         .onAppear {
-            loadItems(for: folder)
+            if let tag = selectedTag {
+                loadItems(forTag: tag)
+            } else {
+                loadItems(for: folder)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ItemDeleted"))) { _ in
             // Refresh when an item is deleted
-            loadItems(for: folder)
+            if let tag = selectedTag {
+                loadItems(forTag: tag)
+            } else {
+                loadItems(for: folder)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ItemEdited"))) { _ in
             // Refresh when an item is edited
-            loadItems(for: folder)
+            if let tag = selectedTag {
+                loadItems(forTag: tag)
+            } else {
+                loadItems(for: folder)
+            }
         }
     }
     
     // MARK: - Timeline View
     
-    private func timelineView(for folder: DateFolder) -> some View {
+    private func timelineView(for folder: DateFolder?) -> some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                // Date Header
-                dateHeader(for: folder)
+                // Header (different for tag vs folder view)
+                if let tag = selectedTag {
+                    tagHeader(for: tag)
+                } else if let folder = folder {
+                    dateHeader(for: folder)
+                }
                 
-                // All entries in chronological order
-                ForEach(items) { item in
-                    EntryCard(item: item)
+                // Tag Filter Chips (show when there are tags available)
+                if !allAvailableTags.isEmpty {
+                    tagFilterBar
                         .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
-                    
-                    // Divider between entries
-                    if item.id != items.last?.id {
-                        Divider()
-                            .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
+                }
+                
+                // All entries in chronological order (filtered)
+                if filteredItems.isEmpty && !selectedTags.isEmpty {
+                    // Empty state when chip filters are applied but no results
+                    VStack(spacing: 12) {
+                        Image(systemName: "tag.slash")
+                            .font(.system(size: 36))
+                            .foregroundColor(.secondary.opacity(0.5))
+                        
+                        Text("No captures match selected tags")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        
+                        Text("Try selecting different tags or clear filters")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary.opacity(0.7))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                } else {
+                    // Show items grouped by date if viewing by tag, otherwise show flat list
+                    if selectedTag != nil {
+                        // Group by date for tag view
+                        let sortedDates = itemsByDate.keys.sorted(by: >)
+                        ForEach(sortedDates, id: \.self) { date in
+                            if let dateItems = itemsByDate[date] {
+                                // Date section header
+                                dateSectionHeader(for: date, itemCount: dateItems.count)
+                                    .padding(.horizontal, 20)
+                                    .padding(.top, 24)
+                                    .padding(.bottom, 12)
+                                
+                                // Items for this date
+                                ForEach(dateItems.filter { item in
+                                    // Apply chip filters if any
+                                    if selectedTags.isEmpty {
+                                        return true
+                                    }
+                                    let itemTags = item.loadDisplayTags().map { $0.text }
+                                    return selectedTags.isSubset(of: Set(itemTags))
+                                }) { item in
+                                    EntryCard(item: item)
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 8)
+                                    
+                                    // Divider between entries
+                                    if item.id != dateItems.last?.id {
+                                        Divider()
+                                            .padding(.horizontal, 20)
+                                    }
+                                }
+                                
+                                // Divider between date sections
+                                if date != sortedDates.last {
+                                    Divider()
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 8)
+                                }
+                            }
+                        }
+                    } else {
+                        // Flat list for date view
+                        ForEach(filteredItems) { item in
+                            EntryCard(item: item)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 8)
+                            
+                            // Divider between entries
+                            if item.id != filteredItems.last?.id {
+                                Divider()
+                                    .padding(.horizontal, 20)
+                            }
+                        }
                     }
                 }
                 
@@ -71,6 +178,96 @@ struct EntryDetailView: View {
         .background(Color(nsColor: .textBackgroundColor))
     }
     
+    // MARK: - Filtered Items
+    
+    private var filteredItems: [CapturedItem] {
+        guard !selectedTags.isEmpty else {
+            return items
+        }
+        
+        return items.filter { item in
+            let itemTags = item.loadDisplayTags().map { $0.text }
+            let itemTagSet = Set(itemTags)
+            // Show item if it has ALL selected tags (AND logic)
+            return selectedTags.isSubset(of: itemTagSet)
+        }
+    }
+    
+    // MARK: - Tag Filter Bar
+    
+    private var tagFilterBar: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Filter by tags")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                if !selectedTags.isEmpty {
+                    Button(action: {
+                        withAnimation {
+                            selectedTags.removeAll()
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 11))
+                            Text("Clear filters")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(allAvailableTags.sorted(), id: \.self) { tagText in
+                        TagFilterChip(
+                            text: tagText,
+                            isSelected: selectedTags.contains(tagText),
+                            count: tagCount(for: tagText)
+                        ) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                if selectedTags.contains(tagText) {
+                                    selectedTags.remove(tagText)
+                                } else {
+                                    selectedTags.insert(tagText)
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            
+            if !selectedTags.isEmpty {
+                HStack {
+                    Text("Showing \(filteredItems.count) of \(items.count) captures")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+            }
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+    }
+    
+    private func tagCount(for tagText: String) -> Int {
+        allItems.filter { item in
+            let itemTags = item.loadDisplayTags().map { $0.text }
+            return itemTags.contains(tagText)
+        }.count
+    }
+    
     private func dateHeader(for folder: DateFolder) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
@@ -80,7 +277,7 @@ struct EntryDetailView: View {
                 
                 Spacer()
                 
-                Text("\(items.count) captures")
+                Text("\(selectedTags.isEmpty ? items.count : filteredItems.count) captures")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 12)
@@ -95,6 +292,68 @@ struct EntryDetailView: View {
         .padding(.horizontal, 20)
         .padding(.top, 24)
         .padding(.bottom, 16)
+    }
+    
+    private func tagHeader(for tag: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "tag.fill")
+                        .font(.title2)
+                        .foregroundColor(.accentColor)
+                    
+                    Text(tag)
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                }
+                
+                Spacer()
+                
+                Text("\(selectedTags.isEmpty ? items.count : filteredItems.count) captures")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color.gray.opacity(0.15)))
+            }
+            
+            Text("All captures with this tag across all dates")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 24)
+        .padding(.bottom, 16)
+    }
+    
+    private func dateSectionHeader(for date: Date, itemCount: Int) -> some View {
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        
+        var displayText: String
+        if calendar.isDateInToday(date) {
+            displayText = "Today"
+        } else if calendar.isDateInYesterday(date) {
+            displayText = "Yesterday"
+        } else {
+            formatter.dateFormat = "EEEE, MMMM d, yyyy"
+            displayText = formatter.string(from: date)
+        }
+        
+        return HStack {
+            Text(displayText)
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            Spacer()
+            
+            Text("\(itemCount) capture\(itemCount == 1 ? "" : "s")")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(Color.gray.opacity(0.15)))
+        }
     }
     
     // MARK: - Loading States
@@ -153,6 +412,10 @@ struct EntryDetailView: View {
     private func loadItems(for folder: DateFolder?) {
         guard let folder = folder else {
             items = []
+            allItems = []
+            itemsByDate = [:]
+            allAvailableTags = []
+            selectedTags.removeAll()
             isLoading = false
             return
         }
@@ -164,8 +427,61 @@ struct EntryDetailView: View {
             // Sort by timestamp DESCENDING (newest at top)
             let sortedItems = loadedItems.sorted { $0.timestamp > $1.timestamp }
             
+            // Collect all unique tags from all items
+            var uniqueTags: Set<String> = []
+            for item in sortedItems {
+                let tags = item.loadDisplayTags()
+                for tag in tags {
+                    uniqueTags.insert(tag.text)
+                }
+            }
+            
             DispatchQueue.main.async {
+                self.allItems = sortedItems
                 self.items = sortedItems
+                self.itemsByDate = [:]
+                self.allAvailableTags = Array(uniqueTags).sorted()
+                self.isLoading = false
+            }
+        }
+    }
+    
+    private func loadItems(forTag tag: String) {
+        isLoading = true
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            let loadedItems = StorageManager.shared.loadItems(forTag: tag)
+            // Sort by timestamp DESCENDING (newest at top)
+            let sortedItems = loadedItems.sorted { $0.timestamp > $1.timestamp }
+            
+            // Group items by date
+            let calendar = Calendar.current
+            var grouped: [Date: [CapturedItem]] = [:]
+            
+            for item in sortedItems {
+                let date = calendar.startOfDay(for: item.timestamp)
+                grouped[date, default: []].append(item)
+            }
+            
+            // Sort items within each date group
+            for (date, items) in grouped {
+                grouped[date] = items.sorted { $0.timestamp > $1.timestamp }
+            }
+            
+            // Collect all unique tags from all items
+            var uniqueTags: Set<String> = []
+            for item in sortedItems {
+                let tags = item.loadDisplayTags()
+                for tag in tags {
+                    uniqueTags.insert(tag.text)
+                }
+            }
+            
+            DispatchQueue.main.async {
+                self.allItems = sortedItems
+                self.items = sortedItems
+                self.itemsByDate = grouped
+                self.allAvailableTags = Array(uniqueTags).sorted()
                 self.isLoading = false
             }
         }
@@ -634,6 +950,44 @@ struct EditTextView: View {
             NotificationCenter.default.post(name: NSNotification.Name("ItemEdited"), object: item.id)
             isPresented = false
         }
+    }
+}
+
+// MARK: - Tag Filter Chip
+
+struct TagFilterChip: View {
+    let text: String
+    let isSelected: Bool
+    let count: Int
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text(text)
+                    .font(.system(size: 12, weight: .medium))
+                
+                Text("(\(count))")
+                    .font(.system(size: 11, weight: .regular))
+                    .opacity(0.7)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .foregroundColor(isSelected ? .white : .primary)
+            .background(
+                Capsule()
+                    .fill(isSelected ? Color.accentColor : Color(nsColor: .controlBackgroundColor))
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(
+                        isSelected ? Color.accentColor.opacity(0.3) : Color.gray.opacity(0.2),
+                        lineWidth: 1
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .help("Filter by \(text) (\(count) items)")
     }
 }
 

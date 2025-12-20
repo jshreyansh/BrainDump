@@ -5,14 +5,15 @@ struct MainView: View {
     
     @StateObject private var storageManager = StorageManager.shared
     @State private var selectedFolder: DateFolder?
+    @State private var selectedTag: String?
     
     var body: some View {
         NavigationSplitView {
-            // Left: Date folders sidebar
-            DateListSidebar(selectedFolder: $selectedFolder)
+            // Left: Date folders and tags sidebar
+            DateListSidebar(selectedFolder: $selectedFolder, selectedTag: $selectedTag)
         } detail: {
-            // Right: Timeline view showing all captures for selected date
-            EntryDetailView(folder: selectedFolder)
+            // Right: Timeline view showing all captures for selected date or tag
+            EntryDetailView(folder: selectedFolder, selectedTag: selectedTag)
         }
         .navigationTitle("BrainDump")
         .toolbar {
@@ -36,14 +37,16 @@ struct MainView: View {
             }
         }
         .onChange(of: storageManager.dateFolders) { folders in
-            // Auto-select today's folder when folders change
-            if selectedFolder == nil || !folders.contains(where: { $0.id == selectedFolder?.id }) {
-                selectedFolder = folders.first
+            // Auto-select today's folder when folders change (only if no tag is selected)
+            if selectedTag == nil {
+                if selectedFolder == nil || !folders.contains(where: { $0.id == selectedFolder?.id }) {
+                    selectedFolder = folders.first
+                }
             }
         }
         .onAppear {
-            // Initial selection - select today
-            if selectedFolder == nil {
+            // Initial selection - select today (only if no tag is selected)
+            if selectedFolder == nil && selectedTag == nil {
                 selectedFolder = storageManager.dateFolders.first
             }
         }

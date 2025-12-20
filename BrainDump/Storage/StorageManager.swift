@@ -358,5 +358,57 @@ final class StorageManager: ObservableObject {
         createStorageDirectoryIfNeeded()
         loadDateFolders()
     }
+    
+    // MARK: - Tag-Based Methods
+    
+    /// Load all items across all dates
+    func loadAllItems() -> [CapturedItem] {
+        var allItems: [CapturedItem] = []
+        
+        for folder in dateFolders {
+            let items = loadItems(for: folder)
+            allItems.append(contentsOf: items)
+        }
+        
+        // Sort by timestamp descending (newest first)
+        return allItems.sorted { $0.timestamp > $1.timestamp }
+    }
+    
+    /// Get all unique tags across all dates with their counts
+    func getAllTags() -> [(tag: String, count: Int)] {
+        var tagCounts: [String: Int] = [:]
+        
+        for folder in dateFolders {
+            let items = loadItems(for: folder)
+            for item in items {
+                let tags = item.loadDisplayTags()
+                for tag in tags {
+                    tagCounts[tag.text, default: 0] += 1
+                }
+            }
+        }
+        
+        // Sort by count descending, then alphabetically
+        return tagCounts.map { (tag: $0.key, count: $0.value) }
+            .sorted { $0.count > $1.count || ($0.count == $1.count && $0.tag < $1.tag) }
+    }
+    
+    /// Load all items that have a specific tag, across all dates
+    func loadItems(forTag tagText: String) -> [CapturedItem] {
+        var matchingItems: [CapturedItem] = []
+        
+        for folder in dateFolders {
+            let items = loadItems(for: folder)
+            for item in items {
+                let tags = item.loadDisplayTags()
+                if tags.contains(where: { $0.text == tagText }) {
+                    matchingItems.append(item)
+                }
+            }
+        }
+        
+        // Sort by timestamp descending (newest first)
+        return matchingItems.sorted { $0.timestamp > $1.timestamp }
+    }
 }
 

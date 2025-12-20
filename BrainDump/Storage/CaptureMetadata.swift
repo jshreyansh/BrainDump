@@ -308,17 +308,6 @@ extension CaptureMetadata {
             type: .method
         ))
         
-        // Language tag (if non-English)
-        if let lang = language, lang != "en" {
-            let languageName = Locale.current.localizedString(forLanguageCode: lang) ?? lang
-            tags.append(DisplayTag(
-                text: languageName,
-                icon: "globe",
-                color: .green,
-                type: .language
-            ))
-        }
-        
         // Domain tag (for URLs)
         if let domain = domain {
             tags.append(DisplayTag(
@@ -326,26 +315,6 @@ extension CaptureMetadata {
                 icon: "link",
                 color: .orange,
                 type: .domain
-            ))
-        }
-        
-        // Image size tag
-        if let width = imageWidth, let height = imageHeight {
-            tags.append(DisplayTag(
-                text: "\(width)×\(height)",
-                icon: "aspectratio",
-                color: .cyan,
-                type: .imageSize
-            ))
-        }
-        
-        // Word count for text
-        if let words = wordCount, words > 0 {
-            tags.append(DisplayTag(
-                text: "\(words) words",
-                icon: "text.word.spacing",
-                color: .secondary,
-                type: .wordCount
             ))
         }
         

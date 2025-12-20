@@ -35,11 +35,6 @@ final class MetadataCapture {
             method: method
         )
         
-        // Add language tag if not English
-        if let lang = textAnalysis.language, lang != "en" {
-            tags.append(lang)
-        }
-        
         return CaptureMetadata(
             capturedAt: Date(),
             timezone: TimeZone.current.identifier,
