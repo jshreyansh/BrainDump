@@ -22,52 +22,91 @@ final class SelectionPopoverController {
     
     /// Show the popover at the specified position
     func show(at position: NSPoint, withText text: String) {
-        currentText = text
-        
-        // Cancel any pending hide
-        hideTimer?.invalidate()
-        
-        if panel == nil {
-            createPanel()
-        }
-        
-        // Update content
-        let contentView = SelectionPopoverView(
-            onCapture: { [weak self] in
-                self?.captureAndHide()
-            },
-            onDismiss: { [weak self] in
+        // Ensure we're on the main thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            self.currentText = text
+            
+            // Cancel any pending hide
+            self.hideTimer?.invalidate()
+            
+            if self.panel == nil {
+                self.createPanel()
+            }
+            
+            // Update content
+            let contentView = SelectionPopoverView(
+                onCapture: { [weak self] in
+                    self?.captureAndHide()
+                },
+                onDismiss: { [weak self] in
+                    self?.hide()
+                }
+            )
+            self.hostingView?.rootView = contentView
+            
+            // Position the panel
+            let panelSize = CGSize(width: 120, height: 36)
+            
+            // Find the screen containing the mouse position
+            // NSEvent.mouseLocation uses bottom-left origin (0,0 at bottom-left)
+            let mouseLocation = position
+            var targetScreen = NSScreen.main
+            
+            // Find which screen contains the mouse
+            for screen in NSScreen.screens {
+                if screen.frame.contains(mouseLocation) {
+                    targetScreen = screen
+                    break
+                }
+            }
+            
+            guard let screen = targetScreen else {
+                // Fallback: use main screen
+                if let mainScreen = NSScreen.main {
+                    self.panel?.setFrameOrigin(NSPoint(x: mouseLocation.x, y: mouseLocation.y))
+                    self.panel?.orderFront(nil)
+                }
+                return
+            }
+            
+            // Calculate adjusted position relative to screen frame
+            // mouseLocation is already in screen coordinates (bottom-left origin)
+            var adjustedX = mouseLocation.x + 15  // Offset to the right of cursor
+            var adjustedY = mouseLocation.y + 25   // Offset above cursor
+            
+            // Ensure popover stays within screen bounds
+            let screenFrame = screen.frame
+            let minX = screenFrame.minX + 10
+            let maxX = screenFrame.maxX - panelSize.width - 10
+            let minY = screenFrame.minY + panelSize.height + 10
+            let maxY = screenFrame.maxY - 10
+            
+            adjustedX = max(minX, min(adjustedX, maxX))
+            adjustedY = max(minY, min(adjustedY, maxY))
+            
+            let finalPosition = NSPoint(x: adjustedX, y: adjustedY)
+            self.panel?.setFrameOrigin(finalPosition)
+            self.panel?.orderFront(nil)
+            
+            // Bring to front
+            self.panel?.orderFrontRegardless()
+            
+            // Auto-hide after delay
+            self.hideTimer = Timer.scheduledTimer(withTimeInterval: self.autoHideDelay, repeats: false) { [weak self] _ in
                 self?.hide()
             }
-        )
-        hostingView?.rootView = contentView
-        
-        // Position the panel
-        let panelSize = CGSize(width: 120, height: 36)
-        
-        // Adjust position to keep on screen
-        var adjustedPosition = position
-        if let screen = NSScreen.main {
-            // Keep within horizontal bounds
-            adjustedPosition.x = max(10, min(adjustedPosition.x - panelSize.width / 2, screen.frame.width - panelSize.width - 10))
-            // Keep within vertical bounds
-            adjustedPosition.y = max(panelSize.height + 10, min(adjustedPosition.y, screen.frame.height - 10))
-        }
-        
-        panel?.setFrameOrigin(adjustedPosition)
-        panel?.orderFront(nil)
-        
-        // Auto-hide after delay
-        hideTimer = Timer.scheduledTimer(withTimeInterval: autoHideDelay, repeats: false) { [weak self] _ in
-            self?.hide()
         }
     }
     
     /// Hide the popover
     func hide() {
-        hideTimer?.invalidate()
-        hideTimer = nil
-        panel?.orderOut(nil)
+        DispatchQueue.main.async { [weak self] in
+            self?.hideTimer?.invalidate()
+            self?.hideTimer = nil
+            self?.panel?.orderOut(nil)
+        }
     }
     
     /// Capture the text and hide
@@ -100,7 +139,7 @@ final class SelectionPopoverController {
             defer: false
         )
         
-        panel.level = .popUpMenu
+        panel.level = .floating  // Use floating level to ensure visibility above other windows
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -108,6 +147,7 @@ final class SelectionPopoverController {
         panel.isMovableByWindowBackground = false
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
+        panel.ignoresMouseEvents = false  // Ensure it can receive mouse events
         
         panel.contentView = hostingView
         

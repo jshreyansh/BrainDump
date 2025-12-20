@@ -165,3 +165,6 @@ For support, bug reports, or feature requests, please contact:
 ---
 
 **Made with ❤️ for macOS**
+
+
+cd /Users/shreyansh/BrainDump && killall -9 BrainDump 2>/dev/null; xcodebuild clean build -project BrainDump.xcodeproj -scheme BrainDump -configuration Debug && open $(xcodebuild -project BrainDump.xcodeproj -scheme BrainDump -configuration Debug -showBuildSettings 2>/dev/null | grep -m 1 "BUILT_PRODUCTS_DIR" | sed 's/.*= *//')/BrainDump.app
