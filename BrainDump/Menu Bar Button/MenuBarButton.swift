@@ -13,7 +13,21 @@ class MenuBarButton {
             return
         }
         
-        button.image = NSImage(systemSymbolName: "brain.head.profile", accessibilityDescription: "BrainDump")
+        // Load custom logo image from bundle
+        if let imagePath = Bundle.main.path(forResource: "braindumplogowhiteapp", ofType: "png"),
+           let image = NSImage(contentsOfFile: imagePath) {
+            // Configure image for menu bar
+            // Since it's a white logo, we keep isTemplate = false to show it as-is
+            image.isTemplate = false
+            // Set appropriate size for menu bar (18x18 is standard, but we'll let it scale)
+            image.size = NSSize(width: 18, height: 18)
+            button.image = image
+        } else {
+            // Fallback to system symbol if image not found
+            print("MenuBarButton: Could not load braindumplogowhiteapp.png, using system symbol")
+            button.image = NSImage(systemSymbolName: "brain.head.profile", accessibilityDescription: "BrainDump")
+        }
+        
         button.imagePosition = NSControl.ImagePosition.imageOnly
         button.target = self
         button.action = #selector(showMenu(_:))

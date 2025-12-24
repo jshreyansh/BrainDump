@@ -7,25 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		BD0001012025120900000001 /* StorageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0001022025120900000001 /* StorageManager.swift */; };
-		BD0001032025120900000002 /* CapturedItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0001042025120900000002 /* CapturedItem.swift */; };
-		BD0001052025120900000003 /* DateFolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0001062025120900000003 /* DateFolder.swift */; };
-		BD00010B2025120900000006 /* CaptureMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD00010C2025120900000006 /* CaptureMetadata.swift */; };
-		BD00010D2025120900000007 /* MetadataCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD00010E2025120900000007 /* MetadataCapture.swift */; };
-		BD0002012025120900000010 /* FloatingBubbleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0002022025120900000010 /* FloatingBubbleController.swift */; };
-		BD0002032025120900000011 /* FloatingBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0002042025120900000011 /* FloatingBubbleView.swift */; };
-		BD0002052025120900000012 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0002062025120900000012 /* ToastView.swift */; };
-		BD0003012025120900000020 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0003022025120900000020 /* HotkeyManager.swift */; };
-		BD0003032025120900000021 /* ClipboardHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0003042025120900000021 /* ClipboardHelper.swift */; };
-		BD0004052025120900000034 /* DateListSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0004012025120900000030 /* DateListSidebar.swift */; };
-		BD0004062025120900000035 /* EntryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0004022025120900000031 /* EntryListView.swift */; };
-		BD0004072025120900000036 /* EntryRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0004032025120900000032 /* EntryRowView.swift */; };
-		BD0004082025120900000037 /* EntryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0004042025120900000033 /* EntryDetailView.swift */; };
-		BD0005032025120900000042 /* SelectionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0005012025120900000040 /* SelectionMonitor.swift */; };
-		BD0005042025120900000043 /* SelectionPopoverController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0005022025120900000041 /* SelectionPopoverController.swift */; };
 		4180AEAE2839753E0054FEA9 /* BrainDumpApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4180AEAD2839753E0054FEA9 /* BrainDumpApp.swift */; };
 		4180AEB22839753F0054FEA9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4180AEB12839753F0054FEA9 /* Assets.xcassets */; };
 		4180AEB52839753F0054FEA9 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4180AEB42839753F0054FEA9 /* Preview Assets.xcassets */; };
+		E1E2CCEE2EFBE918002FA694 /* Added.json in Resources */ = {isa = PBXBuildFile; fileRef = E1E2CCEF2EFBE918002FA694 /* Added.json */; };
+		E1E2CCF12EFBE918002FA696 /* braindumplogowhiteapp.png in Resources */ = {isa = PBXBuildFile; fileRef = E1E2CCF22EFBE918002FA696 /* braindumplogowhiteapp.png */; };
+		E1E2CCF32EFBE918002FA697 /* braindumplogoblackapp.png in Resources */ = {isa = PBXBuildFile; fileRef = E1E2CCF42EFBE918002FA697 /* braindumplogoblackapp.png */; };
 		4180AEBD283975670054FEA9 /* MainScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4180AEBC283975670054FEA9 /* MainScene.swift */; };
 		4180AEC0283976740054FEA9 /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4180AEBF283976740054FEA9 /* SettingsWindow.swift */; };
 		4180AEC2283976F80054FEA9 /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4180AEC1283976F80054FEA9 /* GeneralSettingsView.swift */; };
@@ -58,25 +45,27 @@
 		4180AF092839B0870054FEA9 /* AlwaysOnTop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4180AF082839B0870054FEA9 /* AlwaysOnTop.swift */; };
 		4180AF0F283A50660054FEA9 /* MenuBarButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4180AF0E283A50660054FEA9 /* MenuBarButton.swift */; };
 		4180AF11283A50770054FEA9 /* MenuBarPopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4180AF10283A50770054FEA9 /* MenuBarPopup.swift */; };
+		BD0001012025120900000001 /* StorageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0001022025120900000001 /* StorageManager.swift */; };
+		BD0001032025120900000002 /* CapturedItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0001042025120900000002 /* CapturedItem.swift */; };
+		BD0001052025120900000003 /* DateFolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0001062025120900000003 /* DateFolder.swift */; };
+		BD00010B2025120900000006 /* CaptureMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD00010C2025120900000006 /* CaptureMetadata.swift */; };
+		BD00010D2025120900000007 /* MetadataCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD00010E2025120900000007 /* MetadataCapture.swift */; };
+		BD0002012025120900000010 /* FloatingBubbleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0002022025120900000010 /* FloatingBubbleController.swift */; };
+		BD0002032025120900000011 /* FloatingBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0002042025120900000011 /* FloatingBubbleView.swift */; };
+		BD0002052025120900000012 /* ToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0002062025120900000012 /* ToastView.swift */; };
+		BD0003012025120900000020 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0003022025120900000020 /* HotkeyManager.swift */; };
+		BD0003032025120900000021 /* ClipboardHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0003042025120900000021 /* ClipboardHelper.swift */; };
+		BD0004052025120900000034 /* DateListSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0004012025120900000030 /* DateListSidebar.swift */; };
+		BD0004062025120900000035 /* EntryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0004022025120900000031 /* EntryListView.swift */; };
+		BD0004072025120900000036 /* EntryRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0004032025120900000032 /* EntryRowView.swift */; };
+		BD0004082025120900000037 /* EntryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0004042025120900000033 /* EntryDetailView.swift */; };
+		BD0005032025120900000042 /* SelectionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0005012025120900000040 /* SelectionMonitor.swift */; };
+		BD0005042025120900000043 /* SelectionPopoverController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0005022025120900000041 /* SelectionPopoverController.swift */; };
+		E1E2CCE92EFBE737002FA693 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = E1E2CCE82EFBE737002FA693 /* Lottie */; };
+		E1E2CCED2EFBE918002FA693 /* LottieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1E2CCEC2EFBE918002FA693 /* LottieView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		BD0001022025120900000001 /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageManager.swift; sourceTree = "<group>"; };
-		BD0001042025120900000002 /* CapturedItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturedItem.swift; sourceTree = "<group>"; };
-		BD0001062025120900000003 /* DateFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFolder.swift; sourceTree = "<group>"; };
-		BD00010C2025120900000006 /* CaptureMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMetadata.swift; sourceTree = "<group>"; };
-		BD00010E2025120900000007 /* MetadataCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataCapture.swift; sourceTree = "<group>"; };
-		BD0002022025120900000010 /* FloatingBubbleController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingBubbleController.swift; sourceTree = "<group>"; };
-		BD0002042025120900000011 /* FloatingBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingBubbleView.swift; sourceTree = "<group>"; };
-		BD0002062025120900000012 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
-		BD0003022025120900000020 /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
-		BD0003042025120900000021 /* ClipboardHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardHelper.swift; sourceTree = "<group>"; };
-		BD0004012025120900000030 /* DateListSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateListSidebar.swift; sourceTree = "<group>"; };
-		BD0004022025120900000031 /* EntryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryListView.swift; sourceTree = "<group>"; };
-		BD0004032025120900000032 /* EntryRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryRowView.swift; sourceTree = "<group>"; };
-		BD0004042025120900000033 /* EntryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDetailView.swift; sourceTree = "<group>"; };
-		BD0005012025120900000040 /* SelectionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionMonitor.swift; sourceTree = "<group>"; };
-		BD0005022025120900000041 /* SelectionPopoverController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionPopoverController.swift; sourceTree = "<group>"; };
 		4180AEAA2839753E0054FEA9 /* BrainDump.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BrainDump.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4180AEAD2839753E0054FEA9 /* BrainDumpApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainDumpApp.swift; sourceTree = "<group>"; };
 		4180AEB12839753F0054FEA9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -114,6 +103,26 @@
 		4180AF082839B0870054FEA9 /* AlwaysOnTop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlwaysOnTop.swift; sourceTree = "<group>"; };
 		4180AF0E283A50660054FEA9 /* MenuBarButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarButton.swift; sourceTree = "<group>"; };
 		4180AF10283A50770054FEA9 /* MenuBarPopup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarPopup.swift; sourceTree = "<group>"; };
+		BD0001022025120900000001 /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageManager.swift; sourceTree = "<group>"; };
+		BD0001042025120900000002 /* CapturedItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturedItem.swift; sourceTree = "<group>"; };
+		BD0001062025120900000003 /* DateFolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFolder.swift; sourceTree = "<group>"; };
+		BD00010C2025120900000006 /* CaptureMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureMetadata.swift; sourceTree = "<group>"; };
+		BD00010E2025120900000007 /* MetadataCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataCapture.swift; sourceTree = "<group>"; };
+		BD0002022025120900000010 /* FloatingBubbleController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingBubbleController.swift; sourceTree = "<group>"; };
+		BD0002042025120900000011 /* FloatingBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingBubbleView.swift; sourceTree = "<group>"; };
+		BD0002062025120900000012 /* ToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToastView.swift; sourceTree = "<group>"; };
+		BD0003022025120900000020 /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
+		BD0003042025120900000021 /* ClipboardHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardHelper.swift; sourceTree = "<group>"; };
+		BD0004012025120900000030 /* DateListSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateListSidebar.swift; sourceTree = "<group>"; };
+		BD0004022025120900000031 /* EntryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryListView.swift; sourceTree = "<group>"; };
+		BD0004032025120900000032 /* EntryRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryRowView.swift; sourceTree = "<group>"; };
+		BD0004042025120900000033 /* EntryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDetailView.swift; sourceTree = "<group>"; };
+		BD0005012025120900000040 /* SelectionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionMonitor.swift; sourceTree = "<group>"; };
+		BD0005022025120900000041 /* SelectionPopoverController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionPopoverController.swift; sourceTree = "<group>"; };
+		E1E2CCEC2EFBE918002FA693 /* LottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LottieView.swift; sourceTree = "<group>"; };
+		E1E2CCEF2EFBE918002FA694 /* Added.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Added.json"; sourceTree = "<group>"; };
+		E1E2CCF22EFBE918002FA696 /* braindumplogowhiteapp.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = braindumplogowhiteapp.png; sourceTree = "<group>"; };
+		E1E2CCF42EFBE918002FA697 /* braindumplogoblackapp.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = braindumplogoblackapp.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,6 +130,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E1E2CCE92EFBE737002FA693 /* Lottie in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -165,6 +175,7 @@
 				4180AEAD2839753E0054FEA9 /* BrainDumpApp.swift */,
 				4180AEB12839753F0054FEA9 /* Assets.xcassets */,
 				4180AEB62839753F0054FEA9 /* BrainDump.entitlements */,
+				E1E2CCF02EFBE918002FA695 /* Resources */,
 				4180AEB32839753F0054FEA9 /* Preview Content */,
 			);
 			path = BrainDump;
@@ -176,57 +187,6 @@
 				4180AEB42839753F0054FEA9 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
-			sourceTree = "<group>";
-		};
-		BD0001072025120900000004 /* Storage */ = {
-			isa = PBXGroup;
-			children = (
-				BD0001022025120900000001 /* StorageManager.swift */,
-				BD0001042025120900000002 /* CapturedItem.swift */,
-				BD0001062025120900000003 /* DateFolder.swift */,
-				BD00010C2025120900000006 /* CaptureMetadata.swift */,
-				BD00010E2025120900000007 /* MetadataCapture.swift */,
-			);
-			path = Storage;
-			sourceTree = "<group>";
-		};
-		BD0002072025120900000013 /* Floating Bubble */ = {
-			isa = PBXGroup;
-			children = (
-				BD0002022025120900000010 /* FloatingBubbleController.swift */,
-				BD0002042025120900000011 /* FloatingBubbleView.swift */,
-				BD0002062025120900000012 /* ToastView.swift */,
-			);
-			path = "Floating Bubble";
-			sourceTree = "<group>";
-		};
-		BD0003052025120900000022 /* Hotkey */ = {
-			isa = PBXGroup;
-			children = (
-				BD0003022025120900000020 /* HotkeyManager.swift */,
-				BD0003042025120900000021 /* ClipboardHelper.swift */,
-			);
-			path = Hotkey;
-			sourceTree = "<group>";
-		};
-		BD0004092025120900000038 /* Viewer */ = {
-			isa = PBXGroup;
-			children = (
-				BD0004012025120900000030 /* DateListSidebar.swift */,
-				BD0004022025120900000031 /* EntryListView.swift */,
-				BD0004032025120900000032 /* EntryRowView.swift */,
-				BD0004042025120900000033 /* EntryDetailView.swift */,
-			);
-			path = Viewer;
-			sourceTree = "<group>";
-		};
-		BD0005052025120900000044 /* Selection Monitor */ = {
-			isa = PBXGroup;
-			children = (
-				BD0005012025120900000040 /* SelectionMonitor.swift */,
-				BD0005022025120900000041 /* SelectionPopoverController.swift */,
-			);
-			path = "Selection Monitor";
 			sourceTree = "<group>";
 		};
 		4180AEBE283976620054FEA9 /* Settings */ = {
@@ -362,6 +322,68 @@
 			path = "Menu Bar Button";
 			sourceTree = "<group>";
 		};
+		BD0001072025120900000004 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				BD0001022025120900000001 /* StorageManager.swift */,
+				BD0001042025120900000002 /* CapturedItem.swift */,
+				BD0001062025120900000003 /* DateFolder.swift */,
+				BD00010C2025120900000006 /* CaptureMetadata.swift */,
+				BD00010E2025120900000007 /* MetadataCapture.swift */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
+		BD0002072025120900000013 /* Floating Bubble */ = {
+			isa = PBXGroup;
+			children = (
+				E1E2CCEC2EFBE918002FA693 /* LottieView.swift */,
+				BD0002022025120900000010 /* FloatingBubbleController.swift */,
+				BD0002042025120900000011 /* FloatingBubbleView.swift */,
+				BD0002062025120900000012 /* ToastView.swift */,
+			);
+			path = "Floating Bubble";
+			sourceTree = "<group>";
+		};
+		BD0003052025120900000022 /* Hotkey */ = {
+			isa = PBXGroup;
+			children = (
+				BD0003022025120900000020 /* HotkeyManager.swift */,
+				BD0003042025120900000021 /* ClipboardHelper.swift */,
+			);
+			path = Hotkey;
+			sourceTree = "<group>";
+		};
+		BD0004092025120900000038 /* Viewer */ = {
+			isa = PBXGroup;
+			children = (
+				BD0004012025120900000030 /* DateListSidebar.swift */,
+				BD0004022025120900000031 /* EntryListView.swift */,
+				BD0004032025120900000032 /* EntryRowView.swift */,
+				BD0004042025120900000033 /* EntryDetailView.swift */,
+			);
+			path = Viewer;
+			sourceTree = "<group>";
+		};
+		BD0005052025120900000044 /* Selection Monitor */ = {
+			isa = PBXGroup;
+			children = (
+				BD0005012025120900000040 /* SelectionMonitor.swift */,
+				BD0005022025120900000041 /* SelectionPopoverController.swift */,
+			);
+			path = "Selection Monitor";
+			sourceTree = "<group>";
+		};
+		E1E2CCF02EFBE918002FA695 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				E1E2CCEF2EFBE918002FA694 /* Added.json */,
+				E1E2CCF22EFBE918002FA696 /* braindumplogowhiteapp.png */,
+				E1E2CCF42EFBE918002FA697 /* braindumplogoblackapp.png */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -406,6 +428,9 @@
 				Base,
 			);
 			mainGroup = 4180AEA12839753E0054FEA9;
+			packageReferences = (
+				E1E2CCE72EFBE737002FA693 /* XCRemoteSwiftPackageReference "lottie-ios" */,
+			);
 			productRefGroup = 4180AEAB2839753E0054FEA9 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -422,6 +447,9 @@
 			files = (
 				4180AEB52839753F0054FEA9 /* Preview Assets.xcassets in Resources */,
 				4180AEB22839753F0054FEA9 /* Assets.xcassets in Resources */,
+				E1E2CCEE2EFBE918002FA694 /* Added.json in Resources */,
+				E1E2CCF12EFBE918002FA696 /* braindumplogowhiteapp.png in Resources */,
+				E1E2CCF32EFBE918002FA697 /* braindumplogoblackapp.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -459,6 +487,7 @@
 				4180AF052839A89A0054FEA9 /* DropTarget.swift in Sources */,
 				4180AF092839B0870054FEA9 /* AlwaysOnTop.swift in Sources */,
 				4180AEC4283979530054FEA9 /* MainView.swift in Sources */,
+				E1E2CCED2EFBE918002FA693 /* LottieView.swift in Sources */,
 				4180AEE328398FE50054FEA9 /* Pane.swift in Sources */,
 				4180AF11283A50770054FEA9 /* MenuBarPopup.swift in Sources */,
 				4180AEC7283979FA0054FEA9 /* Sidebar.swift in Sources */,
@@ -686,6 +715,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E1E2CCE72EFBE737002FA693 /* XCRemoteSwiftPackageReference "lottie-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.5.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E1E2CCE82EFBE737002FA693 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E1E2CCE72EFBE737002FA693 /* XCRemoteSwiftPackageReference "lottie-ios" */;
+			productName = Lottie;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4180AEA22839753E0054FEA9 /* Project object */;
 }

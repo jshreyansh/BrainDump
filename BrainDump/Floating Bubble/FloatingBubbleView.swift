@@ -12,6 +12,7 @@ struct FloatingBubbleView: View {
     @State private var isExpanded = false
     @State private var showTextInput = false
     @State private var textInputValue = ""
+    @State private var shouldPlayAnimation = false
     
     /// Callback when content is dropped/saved
     var onDrop: ((Any) -> Void)?
@@ -38,7 +39,7 @@ struct FloatingBubbleView: View {
             ActionButton(
                 icon: "text.cursor",
                 label: "Text",
-                color: .blue
+                color: Color(white: 0.70147061348) // Gray to match plus icon
             ) {
                 // Capture the previous active app BEFORE BrainDump becomes active
                 // This ensures we get the correct source app for metadata
@@ -58,7 +59,7 @@ struct FloatingBubbleView: View {
             ActionButton(
                 icon: "camera.viewfinder",
                 label: "Select",
-                color: .purple
+                color: Color(white: 0.70147061348) // Gray to match plus icon
             ) {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     isExpanded = false
@@ -77,7 +78,7 @@ struct FloatingBubbleView: View {
             ActionButton(
                 icon: "camera.fill",
                 label: "Full",
-                color: .orange
+                color: Color(white: 0.70147061348) // Gray to match plus icon
             ) {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     isExpanded = false
@@ -194,17 +195,38 @@ struct FloatingBubbleView: View {
                     .scaleEffect(isExpanded ? 1.0 : 0.8)
             }
                 
-                // Brain icon (changes when expanded or text input is open)
-                Image(systemName: (isExpanded || showTextInput) ? "xmark" : "brain.head.profile")
-                    .font(.system(size: (isExpanded || showTextInput) ? 18 : 16, weight: .medium))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: (isExpanded || showTextInput) ? [Color.gray, Color.gray.opacity(0.7)] : [Color.purple, Color.blue],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                // Lottie animation (replaces brain icon)
+                if isExpanded || showTextInput {
+                    // Show X mark when expanded or text input is open
+                    Image(systemName: "xmark")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.gray, Color.gray.opacity(0.7)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
+                } else {
+                    // Show Lottie animation in normal state
+                    LottieView(
+                        animationName: "Added",
+                        loopMode: .loop,
+                        speed: 1.0,
+                        isPlaying: shouldPlayAnimation
                     )
-                    .scaleEffect(isPulsing ? 1.15 : 1.0)
+                    .frame(width: 10, height: 10)
+                    .scaleEffect((isPulsing ? 1.15 : 1.0) * 0.2) // Scale down to 40% to fit within pill (32px height)
+                    .onChange(of: shouldPlayAnimation) { newValue in
+                        // Reset animation trigger after it plays
+                        if newValue {
+                            // Wait for animation to complete (90 frames at 30fps = ~3 seconds)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                                shouldPlayAnimation = false
+                            }
+                        }
+                    }
+                }
                 
                 // Drop indicator (works for both pill and circle)
                 if isDragOver {
@@ -253,10 +275,18 @@ struct FloatingBubbleView: View {
             .onChange(of: isExpanded) { newValue in
                 // Notify controller to resize panel
                 FloatingBubbleController.shared.updatePanelSize(isExpanded: newValue, showTextInput: showTextInput)
+                // Reset animation state when expanding/collapsing (user is just viewing options, not saving)
+                if newValue {
+                    shouldPlayAnimation = false
+                }
             }
             .onChange(of: showTextInput) { newValue in
                 // Notify controller to resize panel
                 FloatingBubbleController.shared.updatePanelSize(isExpanded: isExpanded, showTextInput: newValue)
+                // Reset animation state when opening/closing text input (user is just viewing, not saving)
+                if newValue {
+                    shouldPlayAnimation = false
+                }
             }
             .onAppear {
                 // Set initial size when view appears
@@ -299,6 +329,10 @@ struct FloatingBubbleView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 startFullScreenshotCapture()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TriggerSaveAnimation"))) { _ in
+            // Trigger animation when hotkey save happens
+            shouldPlayAnimation = true
         }
     }
     
@@ -360,6 +394,8 @@ struct FloatingBubbleView: View {
         
         if let savedItem = StorageManager.shared.saveText(trimmedText, method: .bubbleText, sourceApp: sourceApp) {
             print("BrainDump: ✅ Text input saved")
+            // Trigger animation
+            shouldPlayAnimation = true
             onDrop?(savedItem)
             onShowToast?()
         } else {
@@ -395,6 +431,8 @@ struct FloatingBubbleView: View {
                         
                         if let savedItem = StorageManager.shared.saveImage(image, method: .bubbleScreenshot) {
                             print("BrainDump: ✅ Screenshot saved")
+                            // Trigger animation
+                            shouldPlayAnimation = true
                             onDrop?(savedItem)
                             onShowToast?()
                             triggerPulse()
@@ -440,6 +478,8 @@ struct FloatingBubbleView: View {
                             
                             if let savedItem = StorageManager.shared.saveImage(image, method: .bubbleFullScreenshot) {
                                 print("BrainDump: ✅ Full screenshot saved")
+                                // Trigger animation
+                                shouldPlayAnimation = true
                                 onDrop?(savedItem)
                                 onShowToast?()
                                 triggerPulse()
@@ -562,6 +602,8 @@ struct FloatingBubbleView: View {
             DispatchQueue.main.async {
                 if let savedItem = StorageManager.shared.saveText(linkText, method: .dragDrop) {
                     print("BrainDump: URL saved successfully")
+                    // Trigger animation
+                    shouldPlayAnimation = true
                     onDrop?(savedItem)
                     onShowToast?()
                 } else {
@@ -592,6 +634,8 @@ struct FloatingBubbleView: View {
                 DispatchQueue.main.async {
                     if let savedItem = StorageManager.shared.saveImage(image, method: .dragDrop) {
                         print("BrainDump: Image saved successfully")
+                        // Trigger animation
+                        shouldPlayAnimation = true
                         onDrop?(savedItem)
                         onShowToast?()
                     } else {
@@ -637,6 +681,8 @@ struct FloatingBubbleView: View {
                 DispatchQueue.main.async {
                     if let savedItem = StorageManager.shared.saveText(linkText, method: .dragDrop) {
                         print("BrainDump: Web URL saved")
+                        // Trigger animation
+                        shouldPlayAnimation = true
                         onDrop?(savedItem)
                         onShowToast?()
                     }
@@ -651,6 +697,8 @@ struct FloatingBubbleView: View {
                     DispatchQueue.main.async {
                         if let savedItem = StorageManager.shared.saveImage(image, method: .dragDrop) {
                             print("BrainDump: Image from file saved")
+                            // Trigger animation
+                            shouldPlayAnimation = true
                             onDrop?(savedItem)
                             onShowToast?()
                         }
@@ -663,6 +711,8 @@ struct FloatingBubbleView: View {
             DispatchQueue.main.async {
                 if let savedItem = StorageManager.shared.saveFromFileURL(fileURL) {
                     print("BrainDump: File saved")
+                    // Trigger animation
+                    shouldPlayAnimation = true
                     onDrop?(savedItem)
                     onShowToast?()
                 } else {
@@ -703,6 +753,8 @@ struct FloatingBubbleView: View {
                 DispatchQueue.main.async {
                     if let savedItem = StorageManager.shared.saveText(linkText, method: .dragDrop) {
                         print("BrainDump: URL from text saved")
+                        // Trigger animation
+                        shouldPlayAnimation = true
                         onDrop?(savedItem)
                         onShowToast?()
                     }
@@ -714,6 +766,8 @@ struct FloatingBubbleView: View {
             DispatchQueue.main.async {
                 if let savedItem = StorageManager.shared.saveText(text, method: .dragDrop) {
                     print("BrainDump: Text saved")
+                    // Trigger animation
+                    shouldPlayAnimation = true
                     onDrop?(savedItem)
                     onShowToast?()
                 }
@@ -838,7 +892,7 @@ struct TextInputPopup: View {
                         .foregroundColor(
                             text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                                 ? Color.gray.opacity(0.5)
-                                : Color.purple
+                                : Color(white: 0.70147061348) // Gray to match plus icon
                         )
                 }
                 .buttonStyle(.plain)

@@ -174,6 +174,9 @@ final class HotkeyManager {
         // Show toast via floating bubble
         FloatingBubbleController.shared.showSaveToast()
         
+        // Trigger animation on floating bubble
+        NotificationCenter.default.post(name: NSNotification.Name("TriggerSaveAnimation"), object: nil)
+        
         // Notify callback
         onHotkeyPressed?()
     }

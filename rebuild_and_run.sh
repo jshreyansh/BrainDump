@@ -37,3 +37,4 @@ fi
 echo ""
 echo "✨ Done! Check the app menu bar for the BrainDump icon."
 
+

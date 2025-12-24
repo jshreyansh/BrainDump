@@ -11,6 +11,8 @@ struct EntryDetailView: View {
     @State private var isLoading = true
     @State private var selectedTags: Set<String> = [] // Selected tag texts for filtering (chip filters)
     @State private var allAvailableTags: [String] = [] // All unique tags in current view
+    @State private var filteredItems: [CapturedItem] = [] // Cached filtered items
+    @State private var itemTagsCache: [UUID: Set<String>] = [:] // Cache tags by item ID
     @ObservedObject private var storageManager = StorageManager.shared
     
     var body: some View {
@@ -49,6 +51,14 @@ struct EntryDetailView: View {
             } else {
                 loadItems(for: folder)
             }
+        }
+        .onChange(of: selectedTags) { _ in
+            // Recompute filtered items when tags change
+            updateFilteredItems()
+        }
+        .onChange(of: items) { _ in
+            // Recompute filtered items when items change
+            updateFilteredItems()
         }
         .onAppear {
             if let tag = selectedTag {
@@ -125,14 +135,15 @@ struct EntryDetailView: View {
                                     .padding(.top, 24)
                                     .padding(.bottom, 12)
                                 
-                                // Items for this date
+                                // Items for this date (use cached tags for filtering)
                                 ForEach(dateItems.filter { item in
                                     // Apply chip filters if any
                                     if selectedTags.isEmpty {
                                         return true
                                     }
-                                    let itemTags = item.loadDisplayTags().map { $0.text }
-                                    return selectedTags.isSubset(of: Set(itemTags))
+                                    // Use cached tags instead of loading from disk
+                                    let itemTagSet = itemTagsCache[item.id] ?? Set<String>()
+                                    return selectedTags.isSubset(of: itemTagSet)
                                 }) { item in
                                     EntryCard(item: item)
                                         .padding(.horizontal, 20)
@@ -180,14 +191,15 @@ struct EntryDetailView: View {
     
     // MARK: - Filtered Items
     
-    private var filteredItems: [CapturedItem] {
+    private func updateFilteredItems() {
         guard !selectedTags.isEmpty else {
-            return items
+            filteredItems = items
+            return
         }
         
-        return items.filter { item in
-            let itemTags = item.loadDisplayTags().map { $0.text }
-            let itemTagSet = Set(itemTags)
+        // Use cached tags instead of loading from disk
+        filteredItems = items.filter { item in
+            let itemTagSet = itemTagsCache[item.id] ?? Set<String>()
             // Show item if it has ALL selected tags (AND logic)
             return selectedTags.isSubset(of: itemTagSet)
         }
@@ -262,9 +274,10 @@ struct EntryDetailView: View {
     }
     
     private func tagCount(for tagText: String) -> Int {
+        // Use cached tags instead of loading from disk
         allItems.filter { item in
-            let itemTags = item.loadDisplayTags().map { $0.text }
-            return itemTags.contains(tagText)
+            let itemTagSet = itemTagsCache[item.id] ?? Set<String>()
+            return itemTagSet.contains(tagText)
         }.count
     }
     
@@ -415,6 +428,8 @@ struct EntryDetailView: View {
             allItems = []
             itemsByDate = [:]
             allAvailableTags = []
+            filteredItems = []
+            itemTagsCache = [:]
             selectedTags.removeAll()
             isLoading = false
             return
@@ -427,20 +442,24 @@ struct EntryDetailView: View {
             // Sort by timestamp DESCENDING (newest at top)
             let sortedItems = loadedItems.sorted { $0.timestamp > $1.timestamp }
             
-            // Collect all unique tags from all items
+            // Preload tags for all items and build cache
             var uniqueTags: Set<String> = []
+            var tagsCache: [UUID: Set<String>] = [:]
+            
             for item in sortedItems {
                 let tags = item.loadDisplayTags()
-                for tag in tags {
-                    uniqueTags.insert(tag.text)
-                }
+                let tagTexts = Set(tags.map { $0.text })
+                tagsCache[item.id] = tagTexts
+                uniqueTags.formUnion(tagTexts)
             }
             
             DispatchQueue.main.async {
                 self.allItems = sortedItems
                 self.items = sortedItems
                 self.itemsByDate = [:]
+                self.itemTagsCache = tagsCache
                 self.allAvailableTags = Array(uniqueTags).sorted()
+                self.updateFilteredItems()
                 self.isLoading = false
             }
         }
@@ -468,20 +487,24 @@ struct EntryDetailView: View {
                 grouped[date] = items.sorted { $0.timestamp > $1.timestamp }
             }
             
-            // Collect all unique tags from all items
+            // Preload tags for all items and build cache
             var uniqueTags: Set<String> = []
+            var tagsCache: [UUID: Set<String>] = [:]
+            
             for item in sortedItems {
                 let tags = item.loadDisplayTags()
-                for tag in tags {
-                    uniqueTags.insert(tag.text)
-                }
+                let tagTexts = Set(tags.map { $0.text })
+                tagsCache[item.id] = tagTexts
+                uniqueTags.formUnion(tagTexts)
             }
             
             DispatchQueue.main.async {
                 self.allItems = sortedItems
                 self.items = sortedItems
                 self.itemsByDate = grouped
+                self.itemTagsCache = tagsCache
                 self.allAvailableTags = Array(uniqueTags).sorted()
+                self.updateFilteredItems()
                 self.isLoading = false
             }
         }
@@ -500,6 +523,8 @@ struct EntryCard: View {
     @State private var isEditing = false
     @State private var editedText: String = ""
     @State private var showDeleteConfirmation = false
+    @State private var loadedImage: NSImage? = nil
+    @State private var isLoadingImage = false
     @ObservedObject private var storageManager = StorageManager.shared
 
     
@@ -689,12 +714,15 @@ struct EntryCard: View {
             }
             
         case .image:
-            if let image = item.loadImage() {
+            if let image = loadedImage {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(maxWidth: .infinity, maxHeight: 400)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else if isLoadingImage {
+                ProgressView()
+                    .frame(height: 200)
             } else {
                 Text("Unable to load image")
                     .foregroundColor(.secondary)
@@ -709,13 +737,26 @@ struct EntryCard: View {
             let content = item.type == .text ? (item.loadTextContent() ?? "") : ""
             let tags = item.loadDisplayTags()
             
+            // Load image asynchronously if it's an image item
+            var image: NSImage? = nil
+            if item.type == .image {
+                image = item.loadImage()
+            }
+            
             DispatchQueue.main.async {
                 self.textContent = content
                 self.displayTags = tags
+                self.loadedImage = image
                 self.isLoaded = true
+                self.isLoadingImage = false
                 // Check if expansion is needed after content loads
                 self.checkIfExpansionNeeded()
             }
+        }
+        
+        // Set loading state for images
+        if item.type == .image {
+            isLoadingImage = true
         }
     }
     
